@@ -1,16 +1,15 @@
 // 1. COMPRESIÓN DE IMÁGENES
 // Busca esta función al principio del archivo js/export-html.js
-function comprimirBase64(base64Str, calidad = 0.8) { // Subimos calidad por defecto a 0.8
+function comprimirBase64(base64Str, calidad = 0.8) {
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const MAX_WIDTH = 1200; // Subimos de 800 a 1200 para mayor nitidez
+            const MAX_WIDTH = 800;
             let width = img.width;
             let height = img.height;
-            // ... resto del código igual ...
             ctx.drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL('image/jpeg', calidad));
         };
@@ -230,12 +229,12 @@ async function generarHTML(desviaciones, seccionId) {
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        const MAX_WIDTH = 1200; // Subimos de 800 a 1200
+                        const MAX_WIDTH = 800;
                         canvas.width = MAX_WIDTH; 
                         canvas.height = (MAX_WIDTH * img.height) / img.width;
                         ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,canvas.width,canvas.height);
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        res(canvas.toDataURL('image/jpeg', 0.8)); // Subimos calidad de 0.6 a 0.8
+                        res(canvas.toDataURL('image/jpeg', 0.8));
                     }
                 });
             }
