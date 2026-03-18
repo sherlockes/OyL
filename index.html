@@ -5,9 +5,6 @@
 <title>Informe de O&L v1.9</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<script src="js/export-pdf.js?v=004"></script>
-<script src="js/export-html.js?v=004"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
@@ -440,6 +437,35 @@ $("btnDescargarPDF").onclick = async () => {
         alert("Error al generar el PDF. Revisa la consola.");
     }
 };
+
+
+//Control de versiones y carga de js
+
+(function() {
+// Generamos una versión basada en el segundo exacto
+const ahora = new Date();
+const v = ahora.getFullYear() + 
+          ("0" + (ahora.getMonth() + 1)).slice(-2) + 
+          ("0" + ahora.getDate()).slice(-2) + 
+          ("0" + ahora.getHours()).slice(-2) + 
+          ("0" + ahora.getMinutes()).slice(-2) + 
+          ("0" + ahora.getSeconds()).slice(-2);
+
+const scripts = [
+  "js/export-pdf.js",
+  "js/export-html.js"
+];
+
+scripts.forEach(src => {
+  const s = document.createElement('script');
+  s.src = `${src}?v=${v}`;
+  s.async = false; 
+  document.head.appendChild(s);
+});
+
+console.log("🛠️ Modo desarrollo: Cargando versión " + v);
+})();
+
 
 // Inicio
 (function init(){
