@@ -3,8 +3,8 @@
  */
 const PDF_CONFIG = {
     MARGEN: 15,
-    COMPRESION_PDF: true,
-    COMPRESION_IMG: 'FAST', 
+    COMPRESION_PDF: true, // Esto debe estar en true
+    COMPRESION_IMG: 'MEDIUM', // Cambia 'FAST' por 'MEDIUM' o 'SLOW' (comprime más)
     FORMATO_IMG: 'JPEG',        
     COLOR_TITULO: [200, 230, 201], 
     COLOR_RESUMEN: [245, 245, 245], 
