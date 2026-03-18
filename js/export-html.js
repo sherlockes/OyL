@@ -1,5 +1,5 @@
 // 1. COMPRESIÓN DE IMÁGENES
-function comprimirBase64(base64Str, calidad = 0.5) {
+function comprimirBase64(base64Str, calidad = 0.7) {
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
