@@ -1,16 +1,28 @@
 // 1. COMPRESIÓN DE IMÁGENES
 // Busca esta función al principio del archivo js/export-html.js
-function comprimirBase64(base64Str, calidad = 0.8) {
+function comprimirBase64(base64Str, calidad = 0.85) { // Subimos calidad a 0.85
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const MAX_WIDTH = 800;
+            const MAX_WIDTH = 1600; // Antes 800, ahora 1600 para alta definición
             let width = img.width;
             let height = img.height;
+            
+            if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
+            
+            // Generamos un JPEG de alta calidad
             resolve(canvas.toDataURL('image/jpeg', calidad));
         };
         img.onerror = () => resolve(base64Str);
@@ -229,12 +241,12 @@ async function generarHTML(desviaciones, seccionId) {
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        const MAX_WIDTH = 800;
+                        const MAX_WIDTH = 1200; // Calidad de sobra para la columna de subsanación
                         canvas.width = MAX_WIDTH; 
                         canvas.height = (MAX_WIDTH * img.height) / img.width;
                         ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,canvas.width,canvas.height);
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        res(canvas.toDataURL('image/jpeg', 0.8));
+                        res(canvas.toDataURL('image/jpeg', 0.8)); // Calidad 80%
                     }
                 });
             }
