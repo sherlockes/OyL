@@ -4,7 +4,7 @@
 const PDF_CONFIG = {
     MARGEN: 15,
     COMPRESION_PDF: true, // Esto debe estar en true
-    COMPRESION_IMG: 'MEDIUM', // Cambia 'FAST' por 'MEDIUM' o 'SLOW' (comprime más)
+    COMPRESION_IMG: 'SLOW', // Cambia 'FAST' por 'MEDIUM' o 'SLOW' (comprime más)
     FORMATO_IMG: 'JPEG',        
     COLOR_TITULO: [200, 230, 201], 
     COLOR_RESUMEN: [245, 245, 245], 
@@ -13,6 +13,25 @@ const PDF_CONFIG = {
     TAMANO_TEXTO: 10,           
     TAMANO_RESUMEN: 9.5         
 };
+
+// Función interna para reducir la foto antes de insertarla en el PDF
+function achicarParaPDF(base64) {
+    return new Promise(res => {
+        const img = new Image();
+        img.src = base64;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            // Para un PDF, con 800px de ancho sobra resolución y ahorra un 70% de espacio
+            const MAX_W = 800; 
+            const scale = MAX_W / img.width;
+            canvas.width = MAX_W;
+            canvas.height = img.height * scale;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            res(canvas.toDataURL('image/jpeg', 0.6)); // Calidad 60% suficiente para impresión
+        };
+    });
+}
 
 async function generarPDF(desviaciones, seccionId) {
     const { jsPDF } = window.jspdf;
@@ -120,7 +139,9 @@ async function generarPDF(desviaciones, seccionId) {
             let curY = y + 2;
 
             if (H > 0 && d.foto) {
-                doc.addImage(d.foto, PDF_CONFIG.FORMATO_IMG, margin + (colW - W) / 2, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
+                const fotoMini = await achicarParaPDF(d.foto);
+                //doc.addImage(d.foto, PDF_CONFIG.FORMATO_IMG, margin + (colW - W) / 2, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
+                doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, margin + (colW - W) / 2, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
                 curY += H + paddingAfterFoto; // Aplicamos el hueco aquí
             }
 
