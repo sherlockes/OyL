@@ -580,35 +580,47 @@ function actualizarIndicadorEspacio() {
 }
 
 
-// --- LÓGICA DE EXPORTACIÓN (BACKUP) ---
+// --- LÓGICA DE EXPORTACIÓN (BACKUP) - CORREGIDA ---
 $("btnExportarJSON").onclick = () => {
-    // 1. Recogemos la estructura de secciones y los datos de cada una
+    // 1. Obtenemos la lista de secciones para saber cuántas hay
+    const seccionesGuardadas = JSON.parse(localStorage.getItem("inspecciones_secciones") || '["General"]');
+    
     const backup = {
         app: "Informe O&L V2.0",
         version: "2.0",
         fecha: new Date().toISOString(),
-        secciones: JSON.parse(localStorage.getItem("inspecciones_secciones") || '["General"]'),
+        secciones: seccionesGuardadas,
         datos: {}
     };
 
-    // 2. Extraemos los datos de cada sección guardada
-    backup.secciones.forEach((nombre, index) => {
-        const data = localStorage.getItem("inspecciones_data_" + index);
-        if (data) {
-            backup.datos[index] = JSON.parse(data);
+    // 2. RECORRIDO DINÁMICO: Buscamos todas las claves que empiecen por nuestro prefijo
+    // Esto es más seguro porque captura los datos aunque los índices hayan bailado
+    for (let i = 0; i < localStorage.length; i++) {
+        const clave = localStorage.key(i);
+        if (clave.startsWith("inspecciones_data_")) {
+            // Extraemos el ID (ej: de "inspecciones_data_0" sacamos el "0")
+            const id = clave.replace("inspecciones_data_", "");
+            try {
+                backup.datos[id] = JSON.parse(localStorage.getItem(clave));
+            } catch (e) {
+                console.error("Error al exportar clave: " + clave);
+            }
         }
-    });
+    }
 
-    // 3. Generamos el archivo JSON para descarga
-    const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+    // 3. Generar y descargar el archivo
+    const dataStr = JSON.stringify(backup);
+    const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = new Date().toISOString().split('T')[0];
     
     a.href = url;
-    a.download = `Copia_Seguridad_O&L_${hoy}.json`;
+    a.download = `BACKUP_OL_${hoy}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    
+    console.log("Exportación completada. Claves procesadas:", Object.keys(backup.datos).length);
 };
 
 // --- LÓGICA DE IMPORTACIÓN (RESTAURACIÓN) ---
