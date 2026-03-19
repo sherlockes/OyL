@@ -285,11 +285,25 @@ $("foto").onchange = async () => {
     }
 };
 
-function editar(i){
- editIndex=i; let d=desviaciones[i];
- $("tipo").value=d.tipo; $("descripcion").value=d.descripcion; $("ubicacion").value=d.ubicacion;
- $("btnGuardar").textContent="Guardar cambios"; $("btnCancelarEdicion").style.display="inline-block";
- $("formTitulo").textContent="✏️ Editar desviación";
+function editar(i) {
+    editIndex = i; 
+    let d = desviaciones[i];
+    
+    // Rellenamos los campos
+    $("tipo").value = d.tipo; 
+    $("descripcion").value = d.descripcion; 
+    $("ubicacion").value = d.ubicacion;
+    
+    // Cambiamos textos de la interfaz
+    $("btnGuardar").textContent = "Guardar cambios"; 
+    $("btnCancelarEdicion").style.display = "inline-block";
+    
+    // Usamos innerHTML para el icono
+    $("formTitulo").innerHTML = "<span>✏️</span> Editar desviación";
+
+    // --- EL SCROLL AUTOMÁTICO ---
+    // Esto sube la pantalla hasta el inicio del formulario
+    $("formDesv").scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function borrar(i){
