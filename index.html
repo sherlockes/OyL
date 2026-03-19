@@ -338,20 +338,17 @@ $("btnRenombrarSeccion").onclick = () => {
   setSeccionActualId(nuevo);
   
   // Refrescamos el HTML del selector (<select>)
-  actualizarSelectorSecciones();
-  
-  // FORZAMOS al elemento <select> a marcar la nueva sección como activa
-  // A veces el móvil mantiene la selección visual en el índice viejo
-  const selector = $("seccionSelect"); // Asegúrate de que este es el ID de tu <select>
-  if (selector) {
-      selector.value = nuevo;
-  }
+  // Prueba a envolver el final de tu función así:
+    setTimeout(() => {
+        actualizarSelectorSecciones();
+        const selector = $("seccionSelect");
+        if (selector) selector.value = nuevo;
+        cargarDatosSeccion(nuevo);
+    }, 100); // 100ms son imperceptibles pero ayudan al navegador
+      
+      console.log("✅ Sección renombrada con éxito a:", nuevo);
+    };
 
-  // 4. Cargamos los datos de la nueva sección renombrada
-  cargarDatosSeccion(nuevo);
-  
-  console.log("✅ Sección renombrada con éxito a:", nuevo);
-};
 // Cambio de sección
 $("seccionSelect").addEventListener("change",()=>{
   const id = $("seccionSelect").value;
