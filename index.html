@@ -303,39 +303,38 @@ $("btnNuevaSeccion").onclick=()=>{
 $("btnRenombrarSeccion").onclick = () => {
     const actual = getSeccionActualId();
     
-    // 1. Captura
+    // Usamos el prompt estándar, pero si Vivaldi lo bloquea, no haremos nada
     let nuevo = prompt("Nuevo nombre (letras, números y '_'):", actual);
+    
+    // Si el usuario cancela o el navegador bloquea el prompt, 'nuevo' será null
     if (!nuevo) return;
 
-    // 2. Limpieza y Normalización
     nuevo = nuevo.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]/g, "");
 
-    // 3. Validaciones
-    if (!nuevo) return alert("Nombre no válido.");
-    if (nuevo === actual) return;
+    if (!nuevo || nuevo === actual) return;
     
     let secciones = cargarSecciones();
-    if (secciones.includes(nuevo)) return alert("Ya existe una sección con ese nombre.");
+    if (secciones.includes(nuevo)) {
+        // En lugar de alert, podemos usar un console.warn o un mensaje en el HTML
+        console.warn("La sección ya existe");
+        return;
+    }
 
-    // 4. Persistencia en LocalStorage (Operación Crítica)
+    // --- PROCESO DE GUARDADO ---
     const datos = localStorage.getItem(DATA_PREFIX + actual);
     if (datos !== null) {
         localStorage.setItem(DATA_PREFIX + nuevo, datos);
         localStorage.removeItem(DATA_PREFIX + actual);
     }
 
-    // Actualizamos el índice de secciones
     secciones = secciones.map(id => id === actual ? nuevo : id);
     guardarSecciones(secciones);
-
-    // 5. CAMBIO CLAVE PARA VIVALDI:
-    // Guardamos la nueva sección como activa en LocalStorage antes de recargar
     setSeccionActualId(nuevo);
 
-    // Mostramos un aviso rápido y recargamos la web
-    // Esto obliga a Vivaldi a reconstruir todo desde cero con los nuevos nombres
-    alert("Sección renombrada. La aplicación se reiniciará para aplicar los cambios.");
-    window.location.reload(); 
+    // --- SOLUCIÓN PARA VIVALDI ---
+    // En lugar de alert() + reload(), usamos solo reload().
+    // Esto evita que el bloqueador de popups de Vivaldi detenga el script.
+    window.location.href = window.location.pathname + "?section=" + nuevo;
 };
 
 // Cambio de sección
