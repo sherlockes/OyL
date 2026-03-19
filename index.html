@@ -167,7 +167,8 @@ function cargarDatosSeccion(id){
 }
 
 function guardarDatosSeccion(id){
-  localStorage.setItem(DATA_PREFIX + id, JSON.stringify(desviaciones));
+    localStorage.setItem(DATA_PREFIX + id, JSON.stringify(desviaciones));
+    actualizarIndicadorEspacio();
 }
 
 function actualizarSelectorSecciones(){
