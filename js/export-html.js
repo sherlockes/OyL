@@ -218,9 +218,11 @@ async function generarHTML(desviaciones, seccionId) {
                 
                 viewZone.innerHTML = \`
                     <div class="img-container"><img src="\${foto}"></div>
-                    <div class="info-row"><span class="label">Acción:</span></div>
-                    <div class="texto-subsanado">\${texto}</div>
-                    <button class="btn-edit" onclick="editarExistente(this)">✏️ Modificar</button>\`;
+                    <div class="info-row" style="display:flex; align-items:center;">
+                        <span class="label">Acción:</span>
+                        <button class="btn-edit-mini" onclick="editarExistente(this)" title="Modificar" style="background:none; border:none; cursor:pointer; font-size:14px; margin-left:5px; padding:0;">✏️</button>
+                    </div>
+                    <div class="texto-subsanado">${texto}</div>`;
                 
                 cell.querySelector('.subsanacion-edit').style.display = 'none';
                 viewZone.style.display = 'block';
