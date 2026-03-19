@@ -87,7 +87,7 @@ async function generarHTML(desviaciones, seccionId) {
     <body>
         <div class="header-title">${codigoFecha} - Informe de O&L de ${nombreSeccion.toUpperCase()} - ${totalGlobal} desviaciones</div>
         <div class="resumen-box">
-            <h2>RESUMEN DE HALLAZGOS Y CORRECCIONES:</h2>
+            <h2>RESUMEN:</h2>
             <ul class="resumen-list">${resumenHTML}</ul>
         </div>
 
