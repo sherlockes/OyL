@@ -234,31 +234,55 @@ function render(){
 }
 
 // Form submit
-$("formDesv").addEventListener("submit", async e=>{
- e.preventDefault();
- let tipo=$("tipo").value;
- if(!tipo){alert("Selecciona un tipo");return;}
- let desc=$("descripcion").value.trim();
- let ub=$("ubicacion").value.trim();
- let file=$("foto").files[0];
- let foto=null;
- if(file) foto=await reducir(file);
- let obj={tipo,descripcion:desc,ubicacion:ub,foto};
+async function procesarGuardado() {
+    let tipo = $("tipo").value;
+    if (!tipo) { alert("Selecciona un tipo"); return; }
+    
+    let desc = $("descripcion").value.trim();
+    let ub = $("ubicacion").value.trim();
+    let file = $("foto").files[0];
+    let foto = null;
 
- if(editIndex===null) desviaciones.push(obj);
- else{
-   if(!foto) obj.foto=desviaciones[editIndex].foto;
-   desviaciones[editIndex]=obj;
-   editIndex=null;
-   $("btnGuardar").textContent="Añadir desviación";
-   $("btnCancelarEdicion").style.display="none";
-   $("formTitulo").textContent="Nueva desviación";
- }
+    if (file) foto = await reducir(file);
+    let obj = { tipo, descripcion: desc, ubicacion: ub, foto };
 
- $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
- guardarDatosSeccion(getSeccionActualId());
- render();
+    if (editIndex === null) {
+        desviaciones.push(obj);
+    } else {
+        if (!foto) obj.foto = desviaciones[editIndex].foto;
+        desviaciones[editIndex] = obj;
+        editIndex = null;
+        $("btnGuardar").textContent = "Añadir desviación";
+        $("btnCancelarEdicion").style.display = "none";
+        $("formTitulo").textContent = "Nueva desviación";
+    }
+
+    // Limpiar campos
+    $("descripcion").value = ""; 
+    $("ubicacion").value = ""; 
+    $("foto").value = ""; 
+    $("tipo").value = "";
+
+    guardarDatosSeccion(getSeccionActualId());
+    render();
+    console.log("✅ Guardado automático");
+}
+
+// Evento del formulario original (clic en botón)
+$("formDesv").addEventListener("submit", async e => {
+    e.preventDefault();
+    await procesarGuardado();
 });
+
+// NUEVO: Evento automático al terminar de hacer la foto
+$("foto").onchange = async () => {
+    if ($("foto").files && $("foto").files.length > 0) {
+        // Un pequeño retraso visual para que el usuario vea que algo pasa
+        $("btnGuardar").textContent = "Procesando...";
+        await procesarGuardado();
+        $("btnGuardar").textContent = "Añadir desviación";
+    }
+};
 
 function editar(i){
  editIndex=i; let d=desviaciones[i];
