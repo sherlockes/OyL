@@ -300,37 +300,58 @@ $("btnNuevaSeccion").onclick=()=>{
 };
 
 // Renombrar sección
-$("btnRenombrarSeccion").onclick=()=>{
+$("btnRenombrarSeccion").onclick = () => {
   const actual = getSeccionActualId();
   let nuevo = prompt("Nuevo nombre para la sección (usa letras, números y guiones bajos \"_\"):", actual);
-  if(!nuevo) return;
-  nuevo = nuevo.trim();
-  if(!nuevo) return;
-  nuevo = nuevo.replace(/\s+/g,"_");
-  nuevo = nuevo.replace(/[^A-Za-z0-9_]/g,"");
-  if(!nuevo){
+  
+  if (!nuevo) return;
+  nuevo = nuevo.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]/g, "");
+
+  if (!nuevo) {
     alert("Nombre no válido.");
     return;
   }
+
   let secciones = cargarSecciones();
-  if(secciones.includes(nuevo) && nuevo !== actual){
+  
+  // Validar si ya existe
+  if (secciones.includes(nuevo) && nuevo !== actual) {
     alert("Ya existe una sección con ese nombre.");
     return;
   }
-  if(nuevo === actual) return;
+  
+  if (nuevo === actual) return;
 
+  // 1. Mover los datos en LocalStorage
   const datos = localStorage.getItem(DATA_PREFIX + actual);
-  if(datos !== null){
+  if (datos !== null) {
     localStorage.setItem(DATA_PREFIX + nuevo, datos);
     localStorage.removeItem(DATA_PREFIX + actual);
   }
-  secciones = secciones.map(id=>id===actual?nuevo:id);
-  guardarSecciones(secciones);
-  setSeccionActualId(nuevo);
-  actualizarSelectorSecciones();
-  cargarDatosSeccion(nuevo);
-};
 
+  // 2. Actualizar el array de secciones
+  secciones = secciones.map(id => id === actual ? nuevo : id);
+  guardarSecciones(secciones);
+
+  // 3. ACTUALIZACIÓN CRÍTICA PARA MÓVIL:
+  // Primero actualizamos el ID global
+  setSeccionActualId(nuevo);
+  
+  // Refrescamos el HTML del selector (<select>)
+  actualizarSelectorSecciones();
+  
+  // FORZAMOS al elemento <select> a marcar la nueva sección como activa
+  // A veces el móvil mantiene la selección visual en el índice viejo
+  const selector = $("seccionSelect"); // Asegúrate de que este es el ID de tu <select>
+  if (selector) {
+      selector.value = nuevo;
+  }
+
+  // 4. Cargamos los datos de la nueva sección renombrada
+  cargarDatosSeccion(nuevo);
+  
+  console.log("✅ Sección renombrada con éxito a:", nuevo);
+};
 // Cambio de sección
 $("seccionSelect").addEventListener("change",()=>{
   const id = $("seccionSelect").value;
