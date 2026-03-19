@@ -83,6 +83,15 @@
 <!-- Zona avanzada -->
 <div class="card">
   <h2>⚠️ Borrar datos</h2>
+    <div style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px;">
+            <span id="espacioTexto">Espacio ocupado: 0%</span>
+            <span id="espacioMB">0 / 5 MB</span>
+        </div>
+    <div style="background: #e0e0e0; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; border: 1px solid #ccc;">
+        <div id="barraProgreso" style="background: #1976d2; width: 0%; height: 100%; transition: width 0.3s, background 0.3s;"></div>
+    </div>
+    </div>
   <p style="margin-top:0; font-size:0.9rem; color:#555;">Estas acciones afectan a las desviaciones guardadas en esta aplicación.</p>
   <button id="btnBorrarSeccion" class="btn-danger">Sección actual</button>
   <button id="btnBorrarTodas" class="btn-danger">Todas</button>
@@ -525,12 +534,43 @@ $("btnDescargarPDF").onclick = async () => {
   if(typeof render === "function") render();
 })();
 
+
+function actualizarIndicadorEspacio() {
+    let totalCaracteres = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
+        // localStorage guarda strings en UTF-16, sumamos longitud de llave y valor
+        totalCaracteres += (localStorage.getItem(key).length + key.length);
+    }
+
+    // El límite estándar es de 5 millones de caracteres (aprox 5MB)
+    const limite = 5 * 1024 * 1024; 
+    const porcentaje = Math.min((totalCaracteres / limite) * 100, 100).toFixed(1);
+    const mbOcupados = (totalCaracteres / (1024 * 1024)).toFixed(2);
+
+    // Actualizar interfaz
+    $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
+    $("espacioMB").textContent = `${mbOcupados} / 5 MB`;
+    $("barraProgreso").style.width = porcentaje + "%";
+
+    // Alerta visual según el llenado
+    if (porcentaje > 85) {
+        $("barraProgreso").style.background = "#d32f2f"; // Rojo crítico
+    } else if (porcentaje > 60) {
+        $("barraProgreso").style.background = "#ffa000"; // Naranja advertencia
+    } else {
+        $("barraProgreso").style.background = "#1976d2"; // Azul normal
+    }
+}
+
+
 // Inicio
 (function init(){
-  const secciones = cargarSecciones();
-  const actual = getSeccionActualId();
-  actualizarSelectorSecciones();
-  cargarDatosSeccion(actual);
+    const secciones = cargarSecciones();
+    const actual = getSeccionActualId();
+    actualizarSelectorSecciones();
+    cargarDatosSeccion(actual);
+    actualizarIndicadorEspacio();
 })();
 </script>
 
