@@ -218,9 +218,9 @@ async function generarHTML(desviaciones, seccionId) {
                 
                 viewZone.innerHTML = \`
                     <div class="img-container"><img src="\${foto}"></div>
-                    <div class="info-row" style="display:flex; align-items:center; gap:5px;">
-                        <span class="label">Acción:</span>
-                        <button onclick="editarExistente(this)" title="Modificar" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; display:inline-flex; line-height:1;">✏️</button>
+                    <div class="info-row" style="display:flex; align-items:center; justify-content: flex-start; gap: 4px;">
+                        <span class="label" style="width: auto; margin-right: 0;">Acción:</span>
+                        <button onclick="editarExistente(this)" title="Modificar" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; display:inline-flex; vertical-align:middle;">✏️</button>
                     </div>
                     <div class="texto-subsanado">\${texto}</div>\`;
                 
