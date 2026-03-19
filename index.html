@@ -18,7 +18,7 @@
 <!-- Selector de sección -->
 <div class="card">
   <div class="section-bar">
-    <h2><span>🗂️</span> Sección actual:</h2>
+    <h2>🗂️ Sección actual:</h2>
     <select id="seccionSelect"></select>
     <button id="btnNuevaSeccion" class="btn-primary">Nueva sección</button>
     <div id="contenedorRenombrar" style="display:none; margin-bottom:1rem;" class="card">
@@ -83,7 +83,7 @@
 
 <!-- Zona avanzada -->
 <div class="card">
-  <h2><span>⚠️</span> Borrar datos</h2>
+  <h2>⚠️ Borrar datos</h2>
   <p style="margin-top:0; font-size:0.9rem; color:#555;">Estas acciones afectan a las desviaciones guardadas en esta aplicación.</p>
   <button id="btnBorrarSeccion" class="btn-danger">Sección actual</button>
   <button id="btnBorrarTodas" class="btn-danger">Todas</button>
@@ -154,7 +154,7 @@ function cargarDatosSeccion(id){
   editIndex = null;
   $("btnGuardar").textContent = "Añadir desviación";
   $("btnCancelarEdicion").style.display = "none";
-  $("formTitulo").textContent = "<span>➕</span> Nueva desviación";
+  $("formTitulo").textContent = "➕ Nueva desviación";
   render();
 }
 
@@ -255,7 +255,7 @@ async function procesarGuardado() {
         editIndex = null;
         $("btnGuardar").textContent = "Añadir desviación";
         $("btnCancelarEdicion").style.display = "none";
-        $("formTitulo").textContent = "<span>➕</span> Nueva desviación";
+        $("formTitulo").textContent = "➕ Nueva desviación";
     }
 
     // Limpiar campos
@@ -266,7 +266,7 @@ async function procesarGuardado() {
 
     guardarDatosSeccion(getSeccionActualId());
     render();
-    console.log("<span>✅</span> Guardado automático");
+    console.log("✅ Guardado automático");
 }
 
 // Evento del formulario original (clic en botón)
@@ -299,7 +299,7 @@ function editar(i) {
     $("btnCancelarEdicion").style.display = "inline-block";
     
     // Usamos innerHTML para el icono
-    $("formTitulo").innerHTML = "<span>✏️</span> Editar desviación";
+    $("formTitulo").innerHTML = "✏️ Editar desviación";
 
     // --- EL SCROLL AUTOMÁTICO ---
     // Esto sube la pantalla hasta el inicio del formulario
@@ -317,7 +317,7 @@ $("btnCancelarEdicion").onclick=()=>{
  editIndex=null;
  $("btnGuardar").textContent="Añadir desviación";
  $("btnCancelarEdicion").style.display="none";
- $("formTitulo").textContent="<span>➕</span> Nueva desviación";
+ $("formTitulo").textContent="➕ Nueva desviación";
  $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
 };
 
@@ -513,7 +513,7 @@ $("btnDescargarPDF").onclick = async () => {
     document.head.appendChild(s);
   });
 
-  console.log("<span>🚀</span> Sistema cargado con versión: " + v);
+  console.log("🚀 Sistema cargado con versión: " + v);
   
   // Ejecutamos el render inicial por si ya había datos en localStorage
   if(typeof render === "function") render();
