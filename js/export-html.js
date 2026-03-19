@@ -7,7 +7,7 @@ function comprimirBase64(base64Str, calidad = 0.7) { // Subimos calidad a 0.85
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const MAX_WIDTH = 800; // Antes 800, ahora 1600 para alta definición
+            const MAX_WIDTH = 640; // Antes 800, ahora 1600 para alta definición
             let width = img.width;
             let height = img.height;
             
@@ -241,12 +241,12 @@ async function generarHTML(desviaciones, seccionId) {
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        const MAX_WIDTH = 800; // Calidad de sobra para la columna de subsanación
+                        const MAX_WIDTH = 640; // Calidad de sobra para la columna de subsanación
                         canvas.width = MAX_WIDTH; 
                         canvas.height = (MAX_WIDTH * img.height) / img.width;
                         ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,canvas.width,canvas.height);
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        res(canvas.toDataURL('image/jpeg', 0.7)); // Calidad 70%
+                        res(canvas.toDataURL('image/jpeg', 0.6)); // Calidad 70%
                     }
                 });
             }
