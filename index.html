@@ -37,7 +37,7 @@
 <!-- Formulario desviaciones -->
 <div class="card">
 <form id="formDesv">
-<h2 id="formTitulo">➕ Nueva desviación</h2>
+<h2 id="formTitulo">Nueva desviación</h2>
 
 <label>Tipo</label>
 <select id="tipo">
@@ -154,7 +154,7 @@ function cargarDatosSeccion(id){
   editIndex = null;
   $("btnGuardar").textContent = "Añadir desviación";
   $("btnCancelarEdicion").style.display = "none";
-  $("formTitulo").textContent = "Nueva desviación";
+  $("formTitulo").textContent = "➕ Nueva desviación";
   render();
 }
 
@@ -255,7 +255,7 @@ async function procesarGuardado() {
         editIndex = null;
         $("btnGuardar").textContent = "Añadir desviación";
         $("btnCancelarEdicion").style.display = "none";
-        $("formTitulo").textContent = "Nueva desviación";
+        $("formTitulo").textContent = "➕ Nueva desviación";
     }
 
     // Limpiar campos
@@ -289,7 +289,7 @@ function editar(i){
  editIndex=i; let d=desviaciones[i];
  $("tipo").value=d.tipo; $("descripcion").value=d.descripcion; $("ubicacion").value=d.ubicacion;
  $("btnGuardar").textContent="Guardar cambios"; $("btnCancelarEdicion").style.display="inline-block";
- $("formTitulo").textContent="Editar desviación";
+ $("formTitulo").textContent="✏️ Editar desviación";
 }
 
 function borrar(i){
@@ -303,7 +303,7 @@ $("btnCancelarEdicion").onclick=()=>{
  editIndex=null;
  $("btnGuardar").textContent="Añadir desviación";
  $("btnCancelarEdicion").style.display="none";
- $("formTitulo").textContent="Nueva desviación";
+ $("formTitulo").textContent="➕ Nueva desviación";
  $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
 };
 
