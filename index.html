@@ -23,6 +23,40 @@
   .section-bar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
   .section-bar select { width:auto; min-width:160px; }
   .advanced { background:#fff8e1; border:1px solid #ffe082; border-radius:12px; padding:1rem; }
+  /* Esto va dentro de <style> en index.html */
+
+/* Añade esto a tu <style> en index.html */
+
+.item-desviacion {
+  display: flex;             /* Activa el modo caja flexible */
+  justify-content: space-between; /* Separa el texto de los botones */
+  align-items: center;       /* Centra verticalmente los elementos */
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border-left: 4px solid #1976d2;
+}
+
+.texto-item {
+  flex-grow: 1;              /* El texto toma todo el espacio sobrante */
+  margin-right: 15px;        /* Espacio de seguridad antes de los botones */
+  font-size: 0.95rem;
+  word-break: break-word;    /* Evita que textos largos rompan el diseño */
+}
+
+.botones-item {
+  display: flex;             /* Botones en línea */
+  gap: 5px;                  /* Espacio entre botones */
+  flex-shrink: 0;            /* Evita que los botones se achiquen */
+}
+
+/* Para que los botones se vean más compactos en la lista */
+.item-desviacion button {
+  margin: 0; 
+  padding: 5px 10px;
+}
 </style>
 </head>
 
