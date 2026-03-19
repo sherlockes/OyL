@@ -24,6 +24,15 @@ body {
     margin-bottom: 1rem;
 }
 
+/* Añade esto a tu style.css para que los iconos luzcan mejor */
+h2 span {
+    background: #eef2f7;
+    padding: 5px;
+    border-radius: 8px;
+    margin-right: 5px;
+    font-size: 0.9em;
+}
+
 /* ==========================================================================
    FORMULARIOS E INPUTS
    ========================================================================== */
