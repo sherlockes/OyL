@@ -75,18 +75,23 @@
 </div>
 
 <!-- Exportación -->
-<div style="text-align:center; margin-top:2rem;">
-<button id="btnDescargarHTML" class="btn-secondary">Descargar HTML</button>
-<button id="btnDescargarPDF" class="btn-secondary">Descargar PDF</button>
-</div>
+<div class="card" style="text-align:center; border: 2px solid #1976d2;">
+    <h3>Finalizar Informe</h3>
+    <button class="btn-primary" id="btnDescargarHTML">Descargar HTML para Responsable</button>
+    <button class="btn-primary" id="btnDescargarPDF" style="background:#2e7d32">Descargar PDF Final</button>
+  </div>
 
-<!-- Zona avanzada -->
-<div class="card advanced">
-  <h3>⚠️ Borrar datos</h3>
-  <p style="margin-top:0; font-size:0.9rem; color:#555;">Estas acciones afectan a las desviaciones guardadas en esta aplicación.</p>
-  <button id="btnBorrarSeccion" class="btn-danger">Sección</button>
-  <button id="btnBorrarTodas" class="btn-danger">Todos</button>
-</div>
+  <hr style="margin: 2rem 0; border: 0; border-top: 1px dashed #ccc;">
+
+  <div class="card" style="background: #fff5f5;">
+    <details>
+      <summary style="cursor:pointer; color: #d32f2f; font-weight: bold;">⚙️ Opciones Avanzadas / Peligrosas</summary>
+      <div style="margin-top: 1rem;">
+        <p style="font-size: 12px; color: #666;">Estas acciones no se pueden deshacer.</p>
+        <button class="btn-danger" id="btnLimpiar">Borrar todas las desviaciones de esta sección</button>
+        </div>
+    </details>
+  </div>
 
 </div>
 
