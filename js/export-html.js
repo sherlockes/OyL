@@ -7,7 +7,7 @@ function comprimirBase64(base64Str, calidad = 0.7) { // Subimos calidad a 0.85
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const MAX_WIDTH = 1600; // Antes 800, ahora 1600 para alta definición
+            const MAX_WIDTH = 1200; // Antes 800, ahora 1600 para alta definición
             let width = img.width;
             let height = img.height;
             
