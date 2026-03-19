@@ -1,6 +1,6 @@
 // 1. COMPRESIÓN DE IMÁGENES
 // Busca esta función al principio del archivo js/export-html.js
-function comprimirBase64(base64Str, calidad = 0.6) { // Subimos calidad a 0.85
+function comprimirBase64(base64Str, calidad = 0.9) { // Subimos calidad a 0.85
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
