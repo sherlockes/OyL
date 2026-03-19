@@ -244,6 +244,10 @@ function render(){
   if(d.foto){
     let img=document.createElement("img");
     img.src=d.foto; img.className="thumb";
+    
+    img.style.cursor = "zoom-in"; // Cambia el cursor para indicar que es clickeable
+    img.onclick = () => ampliarImagen(d.foto); // Llama a la función que creamos antes
+    
     left.appendChild(img);
   }
 
