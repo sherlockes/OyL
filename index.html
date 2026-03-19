@@ -301,53 +301,50 @@ $("btnNuevaSeccion").onclick=()=>{
 
 // Renombrar sección
 $("btnRenombrarSeccion").onclick = () => {
-  const actual = getSeccionActualId();
-  let nuevo = prompt("Nuevo nombre para la sección (usa letras, números y guiones bajos \"_\"):", actual);
-  
-  if (!nuevo) return;
-  nuevo = nuevo.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]/g, "");
+    const actual = getSeccionActualId();
+    
+    // 1. Captura y Limpieza inicial
+    let nuevo = prompt("Nuevo nombre (letras, números y '_'):", actual);
+    if (!nuevo) return;
 
-  if (!nuevo) {
-    alert("Nombre no válido.");
-    return;
-  }
+    // Normalización: quitamos espacios por guiones y eliminamos raros
+    nuevo = nuevo.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]/g, "");
 
-  let secciones = cargarSecciones();
-  
-  // Validar si ya existe
-  if (secciones.includes(nuevo) && nuevo !== actual) {
-    alert("Ya existe una sección con ese nombre.");
-    return;
-  }
-  
-  if (nuevo === actual) return;
+    // 2. Validaciones de negocio
+    if (!nuevo) return alert("Nombre no válido.");
+    if (nuevo === actual) return;
+    
+    let secciones = cargarSecciones();
+    if (secciones.includes(nuevo)) return alert("Ya existe una sección con ese nombre.");
 
-  // 1. Mover los datos en LocalStorage
-  const datos = localStorage.getItem(DATA_PREFIX + actual);
-  if (datos !== null) {
-    localStorage.setItem(DATA_PREFIX + nuevo, datos);
-    localStorage.removeItem(DATA_PREFIX + actual);
-  }
+    // 3. Persistencia (LocalStorage)
+    // Movemos los datos de la vieja clave a la nueva
+    const datos = localStorage.getItem(DATA_PREFIX + actual);
+    if (datos !== null) {
+        localStorage.setItem(DATA_PREFIX + nuevo, datos);
+        localStorage.removeItem(DATA_PREFIX + actual);
+    }
 
-  // 2. Actualizar el array de secciones
-  secciones = secciones.map(id => id === actual ? nuevo : id);
-  guardarSecciones(secciones);
+    // Actualizamos el listado global de nombres
+    secciones = secciones.map(id => id === actual ? nuevo : id);
+    guardarSecciones(secciones);
 
-  // 3. ACTUALIZACIÓN CRÍTICA PARA MÓVIL:
-  // Primero actualizamos el ID global
-  setSeccionActualId(nuevo);
-  
-  // Refrescamos el HTML del selector (<select>)
-  // Prueba a envolver el final de tu función así:
+    // 4. Actualización de Interfaz (UI)
+    setSeccionActualId(nuevo);
+
+    // Pequeño delay para asegurar que el DOM procesa el cambio de LocalStorage
     setTimeout(() => {
         actualizarSelectorSecciones();
+        
         const selector = $("seccionSelect");
-        if (selector) selector.value = nuevo;
+        if (selector) {
+            selector.value = nuevo; // Forzamos la selección visual
+        }
+        
         cargarDatosSeccion(nuevo);
-    }, 100); // 100ms son imperceptibles pero ayudan al navegador
-      
-      console.log("✅ Sección renombrada con éxito a:", nuevo);
-    };
+        console.log(`✅ Sección '${actual}' renombrada a '${nuevo}'`);
+    }, 100);
+};
 
 // Cambio de sección
 $("seccionSelect").addEventListener("change",()=>{
