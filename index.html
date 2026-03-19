@@ -92,9 +92,23 @@
         <div id="barraProgreso" style="background: #1976d2; width: 0%; height: 100%; transition: width 0.3s, background 0.3s;"></div>
     </div>
     </div>
-  <p style="margin-top:0; font-size:0.9rem; color:#555;">Estas acciones afectan a las desviaciones guardadas en esta aplicación.</p>
-  <button id="btnBorrarSeccion" class="btn-danger">Sección actual</button>
-  <button id="btnBorrarTodas" class="btn-danger">Todas</button>
+    <p style="margin-top:0; font-size:0.9rem; color:#555;">Estas acciones afectan a las desviaciones guardadas en esta aplicación.</p>
+    <button id="btnBorrarSeccion" class="btn-danger">Sección actual</button>
+    <button id="btnBorrarTodas" class="btn-danger">Todas</button>
+    <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #eee;">
+    <h3 style="font-size: 1rem; margin-bottom: 1rem;">💾 Gestión de Copias de Seguridad</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-secondary" id="btnExportarJSON" style="flex: 1;">
+            <span>📤</span> Exportar Todo (.json)
+        </button>
+        <button class="btn-secondary" id="btnImportarJSON" style="flex: 1;">
+            <span>📥</span> Importar Copia (.json)
+        </button>
+        <input type="file" id="inputImportar" style="display:none" accept=".json">
+    </div>
+    <p style="font-size: 0.75rem; color: #666; margin-top: 0.5rem;">
+        Usa esto para vaciar la memoria del móvil sin perder tus inspecciones anteriores.
+    </p>
 </div>
 
 </div>
@@ -535,7 +549,7 @@ $("btnDescargarPDF").onclick = async () => {
   if(typeof render === "function") render();
 })();
 
-
+// Calcular espacio ocupado del Local Storage
 function actualizarIndicadorEspacio() {
     let totalCaracteres = 0;
     for (let i = 0; i < localStorage.length; i++) {
@@ -564,6 +578,75 @@ function actualizarIndicadorEspacio() {
     }
 }
 
+
+// --- LÓGICA DE EXPORTACIÓN (BACKUP) ---
+$("btnExportarJSON").onclick = () => {
+    // 1. Recogemos la estructura de secciones y los datos de cada una
+    const backup = {
+        app: "Informe O&L V2.0",
+        version: "2.0",
+        fecha: new Date().toISOString(),
+        secciones: JSON.parse(localStorage.getItem("inspecciones_secciones") || '["General"]'),
+        datos: {}
+    };
+
+    // 2. Extraemos los datos de cada sección guardada
+    backup.secciones.forEach((nombre, index) => {
+        const data = localStorage.getItem("inspecciones_data_" + index);
+        if (data) {
+            backup.datos[index] = JSON.parse(data);
+        }
+    });
+
+    // 3. Generamos el archivo JSON para descarga
+    const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const hoy = new Date().toISOString().slice(0, 10);
+    
+    a.href = url;
+    a.download = `Copia_Seguridad_O&L_${hoy}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+// --- LÓGICA DE IMPORTACIÓN (RESTAURACIÓN) ---
+$("btnImportarJSON").onclick = () => $("inputImportar").click();
+
+$("inputImportar").onchange = (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+
+    const lector = new FileReader();
+    lector.onload = (event) => {
+        try {
+            const backup = JSON.parse(event.target.result);
+            
+            // Validación mínima de seguridad
+            if (!backup.secciones || !backup.datos) {
+                throw new Error("El archivo no parece una copia válida de esta App.");
+            }
+
+            if (confirm("¡ATENCIÓN! Al importar se borrarán los datos actuales del móvil. ¿Deseas continuar?")) {
+                // Limpiamos todo y escribimos los nuevos datos
+                localStorage.clear();
+                localStorage.setItem("inspecciones_secciones", JSON.stringify(backup.secciones));
+                
+                Object.keys(backup.datos).forEach(key => {
+                    localStorage.setItem("inspecciones_data_" + key, JSON.stringify(backup.datos[key]));
+                });
+
+                alert("✅ Datos restaurados correctamente.");
+                location.reload(); // Recargamos para que la App muestre los nuevos datos
+            }
+        } catch (err) {
+            alert("❌ Error al leer el archivo: " + err.message);
+        }
+    };
+    lector.readAsText(archivo);
+    // Limpiamos el input para poder volver a subir el mismo archivo si hiciera falta
+    e.target.value = ""; 
+};
 
 // Inicio
 (function init(){
