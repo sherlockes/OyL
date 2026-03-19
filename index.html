@@ -81,35 +81,28 @@
 </div>
 
 <!-- Zona avanzada -->
-<div class="card">
-    <h2>⚙️ Zona avanzada</h2>
-    <h3 style="font-size: 1rem; margin-bottom: 1rem;">⚠️ Borrar datos</h3>
-    <div style="margin-bottom: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px;">
-            <span id="espacioTexto">Espacio ocupado: 0%</span>
-            <span id="espacioMB">0 / 5 MB</span>
-        </div>
+<div class="card advanced">
+  <h3 style="display: flex; align-items: center; gap: 8px;"><span>⚙️</span> Ajustes Avanzados</h3>
+  
+  <div style="margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px;">
+      <span id="espacioTexto">Espacio ocupado: 0%</span>
+      <span id="espacioMB">0 / 5 MB</span>
+    </div>
     <div style="background: #e0e0e0; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; border: 1px solid #ccc;">
-        <div id="barraProgreso" style="background: #1976d2; width: 0%; height: 100%; transition: width 0.3s, background 0.3s;"></div>
+      <div id="barraProgreso" style="background: #1976d2; width: 0%; height: 100%; transition: width 0.3s;"></div>
     </div>
-    </div>
-    <p style="margin-top:0; font-size:0.9rem; color:#555;">Estas acciones afectan a las desviaciones guardadas en esta aplicación.</p>
-    <button id="btnBorrarSeccion" class="btn-danger">Sección actual</button>
-    <button id="btnBorrarTodas" class="btn-danger">Todas</button>
-    <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #eee;">
-    <h3 style="font-size: 1rem; margin-bottom: 1rem;">💾 Gestión de Copias de Seguridad</h3>
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="btn-secondary" id="btnExportarJSON" style="flex: 1;">
-            <span>📤</span> Exportar Todo (.json)
-        </button>
-        <button class="btn-secondary" id="btnImportarJSON" style="flex: 1;">
-            <span>📥</span> Importar Copia (.json)
-        </button>
-        <input type="file" id="inputImportar" style="display:none" accept=".json">
-    </div>
-    <p style="font-size: 0.75rem; color: #666; margin-top: 0.5rem;">
-        Usa esto para vaciar la memoria del móvil sin perder tus inspecciones anteriores.
-    </p>
+  </div>
+
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
+    <button id="btnExportarJSON" class="btn-primary" style="flex:1; background:#2e7d32;">📤 Exportar Backup</button>
+    <button id="btnImportarJSON" class="btn-primary" style="flex:1; background:#f57c00;">📥 Importar Backup</button>
+    <input type="file" id="inputImportar" style="display:none" accept=".json">
+  </div>
+
+  <p style="margin-top:0; font-size:0.9rem; color:#555;">Acciones de borrado:</p>
+  <button id="btnBorrarSeccion" class="btn-danger">Borrar sección</button>
+  <button id="btnBorrarTodas" class="btn-danger">Borrar todas las secciones</button>
 </div>
 
 </div>
@@ -550,115 +543,77 @@ $("btnDescargarPDF").onclick = async () => {
   if(typeof render === "function") render();
 })();
 
-// Calcular espacio ocupado del Local Storage
+// --- FUNCIONES DE MEMORIA Y BACKUP PARA V1.9 ---
+
 function actualizarIndicadorEspacio() {
     let totalCaracteres = 0;
     for (let i = 0; i < localStorage.length; i++) {
         let key = localStorage.key(i);
-        // localStorage guarda strings en UTF-16, sumamos longitud de llave y valor
         totalCaracteres += (localStorage.getItem(key).length + key.length);
     }
-
-    // El límite estándar es de 5 millones de caracteres (aprox 5MB)
-    const limite = 5 * 1024 * 1024; 
+    const limite = 5 * 1024 * 1024; // 5MB
     const porcentaje = Math.min((totalCaracteres / limite) * 100, 100).toFixed(1);
     const mbOcupados = (totalCaracteres / (1024 * 1024)).toFixed(2);
 
-    // Actualizar interfaz
-    $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
-    $("espacioMB").textContent = `${mbOcupados} / 5 MB`;
-    $("barraProgreso").style.width = porcentaje + "%";
-
-    // Alerta visual según el llenado
-    if (porcentaje > 85) {
-        $("barraProgreso").style.background = "#d32f2f"; // Rojo crítico
-    } else if (porcentaje > 60) {
-        $("barraProgreso").style.background = "#ffa000"; // Naranja advertencia
-    } else {
-        $("barraProgreso").style.background = "#1976d2"; // Azul normal
+    if($("espacioTexto")){
+        $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
+        $("espacioMB").textContent = `${mbOcupados} / 5 MB`;
+        $("barraProgreso").style.width = porcentaje + "%";
+        $("barraProgreso").style.background = porcentaje > 80 ? "#d32f2f" : (porcentaje > 50 ? "#f57c00" : "#1976d2");
     }
 }
 
-
-// --- LÓGICA DE EXPORTACIÓN (BACKUP) - CORREGIDA ---
+// EXPORTAR (BACKUP)
 $("btnExportarJSON").onclick = () => {
-    // 1. Obtenemos la lista de secciones para saber cuántas hay
-    const seccionesGuardadas = JSON.parse(localStorage.getItem("inspecciones_secciones") || '["General"]');
-    
     const backup = {
-        app: "Informe O&L V2.0",
-        version: "2.0",
+        app: "Informe O&L v1.9",
         fecha: new Date().toISOString(),
-        secciones: seccionesGuardadas,
+        secciones: JSON.parse(localStorage.getItem("desviaciones_v1_9_secciones") || '[]'),
         datos: {}
     };
 
-    // 2. RECORRIDO DINÁMICO: Buscamos todas las claves que empiecen por nuestro prefijo
-    // Esto es más seguro porque captura los datos aunque los índices hayan bailado
+    // Buscamos todas las claves que empiecen por tu prefijo real
     for (let i = 0; i < localStorage.length; i++) {
         const clave = localStorage.key(i);
-        if (clave.startsWith("inspecciones_data_")) {
-            // Extraemos el ID (ej: de "inspecciones_data_0" sacamos el "0")
-            const id = clave.replace("inspecciones_data_", "");
+        if (clave.startsWith("desviaciones_v1_9_") && clave !== "desviaciones_v1_9_secciones" && clave !== "desviaciones_v1_9_seccion_actual") {
             try {
-                backup.datos[id] = JSON.parse(localStorage.getItem(clave));
-            } catch (e) {
-                console.error("Error al exportar clave: " + clave);
-            }
+                backup.datos[clave] = JSON.parse(localStorage.getItem(clave));
+            } catch (e) {}
         }
     }
 
-    // 3. Generar y descargar el archivo
-    const dataStr = JSON.stringify(backup);
-    const blob = new Blob([dataStr], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const hoy = new Date().toISOString().split('T')[0];
-    
     a.href = url;
-    a.download = `BACKUP_OL_${hoy}.json`;
+    a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
     a.click();
-    URL.revokeObjectURL(url);
-    
-    console.log("Exportación completada. Claves procesadas:", Object.keys(backup.datos).length);
 };
 
-// --- LÓGICA DE IMPORTACIÓN (RESTAURACIÓN) ---
+// IMPORTAR (RESTAURAR)
 $("btnImportarJSON").onclick = () => $("inputImportar").click();
 
 $("inputImportar").onchange = (e) => {
     const archivo = e.target.files[0];
     if (!archivo) return;
-
     const lector = new FileReader();
     lector.onload = (event) => {
         try {
             const backup = JSON.parse(event.target.result);
+            if (!backup.secciones || !backup.datos) throw new Error("Archivo no válido");
             
-            // Validación mínima de seguridad
-            if (!backup.secciones || !backup.datos) {
-                throw new Error("El archivo no parece una copia válida de esta App.");
-            }
-
-            if (confirm("¡ATENCIÓN! Al importar se borrarán los datos actuales del móvil. ¿Deseas continuar?")) {
-                // Limpiamos todo y escribimos los nuevos datos
+            if (confirm("Se borrarán los datos actuales para cargar el backup. ¿Continuar?")) {
                 localStorage.clear();
-                localStorage.setItem("inspecciones_secciones", JSON.stringify(backup.secciones));
-                
-                Object.keys(backup.datos).forEach(key => {
-                    localStorage.setItem("inspecciones_data_" + key, JSON.stringify(backup.datos[key]));
-                });
-
-                alert("✅ Datos restaurados correctamente.");
-                location.reload(); // Recargamos para que la App muestre los nuevos datos
+                localStorage.setItem("desviaciones_v1_9_secciones", JSON.stringify(backup.secciones));
+                for (const clave in backup.datos) {
+                    localStorage.setItem(clave, JSON.stringify(backup.datos[clave]));
+                }
+                alert("✅ Importación completada.");
+                location.reload();
             }
-        } catch (err) {
-            alert("❌ Error al leer el archivo: " + err.message);
-        }
+        } catch (err) { alert("Error: " + err.message); }
     };
     lector.readAsText(archivo);
-    // Limpiamos el input para poder volver a subir el mismo archivo si hiciera falta
-    e.target.value = ""; 
 };
 
 // Inicio
