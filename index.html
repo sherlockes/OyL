@@ -303,47 +303,39 @@ $("btnNuevaSeccion").onclick=()=>{
 $("btnRenombrarSeccion").onclick = () => {
     const actual = getSeccionActualId();
     
-    // 1. Captura y Limpieza inicial
+    // 1. Captura
     let nuevo = prompt("Nuevo nombre (letras, números y '_'):", actual);
     if (!nuevo) return;
 
-    // Normalización: quitamos espacios por guiones y eliminamos raros
+    // 2. Limpieza y Normalización
     nuevo = nuevo.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]/g, "");
 
-    // 2. Validaciones de negocio
+    // 3. Validaciones
     if (!nuevo) return alert("Nombre no válido.");
     if (nuevo === actual) return;
     
     let secciones = cargarSecciones();
     if (secciones.includes(nuevo)) return alert("Ya existe una sección con ese nombre.");
 
-    // 3. Persistencia (LocalStorage)
-    // Movemos los datos de la vieja clave a la nueva
+    // 4. Persistencia en LocalStorage (Operación Crítica)
     const datos = localStorage.getItem(DATA_PREFIX + actual);
     if (datos !== null) {
         localStorage.setItem(DATA_PREFIX + nuevo, datos);
         localStorage.removeItem(DATA_PREFIX + actual);
     }
 
-    // Actualizamos el listado global de nombres
+    // Actualizamos el índice de secciones
     secciones = secciones.map(id => id === actual ? nuevo : id);
     guardarSecciones(secciones);
 
-    // 4. Actualización de Interfaz (UI)
+    // 5. CAMBIO CLAVE PARA VIVALDI:
+    // Guardamos la nueva sección como activa en LocalStorage antes de recargar
     setSeccionActualId(nuevo);
 
-    // Pequeño delay para asegurar que el DOM procesa el cambio de LocalStorage
-    setTimeout(() => {
-        actualizarSelectorSecciones();
-        
-        const selector = $("seccionSelect");
-        if (selector) {
-            selector.value = nuevo; // Forzamos la selección visual
-        }
-        
-        cargarDatosSeccion(nuevo);
-        console.log(`✅ Sección '${actual}' renombrada a '${nuevo}'`);
-    }, 100);
+    // Mostramos un aviso rápido y recargamos la web
+    // Esto obliga a Vivaldi a reconstruir todo desde cero con los nuevos nombres
+    alert("Sección renombrada. La aplicación se reiniciará para aplicar los cambios.");
+    window.location.reload(); 
 };
 
 // Cambio de sección
