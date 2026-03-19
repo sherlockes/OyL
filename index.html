@@ -57,6 +57,67 @@
   margin: 0; 
   padding: 5px 10px;
 }
+
+.desv-item {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;           
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  gap: 10px; /* Espacio mínimo entre texto y botones */
+}
+
+/* El contenedor de Foto + Texto */
+.desv-item > div:first-child {
+  display: flex;
+  align-items: center;
+  flex: 1;          /* Crece todo lo posible */
+  min-width: 0;     /* CRÍTICO: Permite que el texto se encoja en móviles */
+}
+
+/* El texto específicamente */
+.desv-item .info-text {
+  min-width: 0;     
+  white-space: nowrap; /* Opcional: si quieres que no salte de línea */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Añade puntos suspensivos si el texto es muy largo */
+  flex: 1;
+}
+
+/* Si prefieres que el texto SÍ salte de línea pero no empuje los botones: */
+.desv-item .info-text-wrap {
+  min-width: 0;
+  flex: 1;
+  word-break: break-word; /* Rompe palabras largas */
+  font-size: 14px;
+}
+
+/* El contenedor de los botones */
+.desv-item > div:last-child {
+  display: flex;
+  flex-direction: column; /* En móvil, mejor uno sobre otro si no caben */
+  gap: 4px;
+  flex-shrink: 0; /* Impide que los botones se achiquen o desaparezcan */
+}
+
+/* Si en el móvil quieres los botones uno al lado del otro, usa esto en lugar de column: */
+@media (min-width: 480px) {
+  .desv-item > div:last-child {
+    flex-direction: row;
+  }
+}
+
+.thumb {
+  width: 45px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-right: 10px;
+  flex-shrink: 0; /* La foto no se encoge */
+}
 </style>
 </head>
 
@@ -260,9 +321,11 @@ function render(){
     left.appendChild(img);
   }
 
-  let info=document.createElement("div");
-  info.innerHTML=`<strong>${d.tipo}</strong><br>${d.descripcion||""}<br><span style='color:#666'>Ubicación: ${d.ubicacion||"—"}</span>`;
-  left.appendChild(info);
+  let info = document.createElement("div");
+    // Añadimos la clase info-text-wrap para que el CSS la controle
+    info.className = "info-text-wrap"; 
+    info.innerHTML = `<strong>${d.tipo}</strong><br>${d.descripcion || ""}<br><span style='color:#666; font-size:12px;'>📍 ${d.ubicacion || "—"}</span>`;
+    left.appendChild(info);
 
   let right=document.createElement("div");
   right.innerHTML=`<button class='btn-secondary btn-small' onclick='editar(${real})'>Editar</button>
