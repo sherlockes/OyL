@@ -182,14 +182,21 @@ async function reducir(file){
   r.onload=e=>{
    let img=new Image();
    img.onload=()=>{
-    let MAX=500;
+    let MAX=500; // Mantenemos 500px de ancho
     let sc=MAX/img.width;
     let c=document.createElement("canvas");
     c.width=MAX;
     c.height=img.height*sc;
-    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-    //res(c.toDataURL("image/webp",0.8));
-    res(c.toDataURL("image/png"));
+    const ctx = c.getContext("2d");
+
+    // Fondo blanco para evitar transparencias negras en JPEG
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img,0,0,c.width,c.height);
+
+    // CAMBIO CLAVE: "image/jpeg" con calidad 0.6
+    // Esto hace que la foto pase de 400KB a unos 50KB.
+    res(c.toDataURL("image/jpeg", 0.6));
    };
    img.src=e.target.result;
   };
