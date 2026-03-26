@@ -1,0 +1,1709 @@
+--- PROYECTO: OyL ---
+--- FECHA: 2026-03-26 10:46 ---
+
+--- ESTRUCTURA (Resumida) ---
+.
+./index.html
+./ai_context.txt
+./js
+./js/export-pdf.js
+./js/export-html (copia).js
+./js/export-html.js
+./ai.sh
+./README.md
+./css
+./css/style (copia 1).css
+./css/style.css
+
+--- ARCHIVOS DE MUESTRA ---
+
+--- CÓDIGO FUENTE ---
+
+--- FILE: ./index.html ---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe de O&L v2.0</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧹</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+
+<div class="app">
+
+<h1>Informe de O&L <span style="font-size:14px; color:#555;">v2.0</span></h1>
+
+<!-- Selector de sección -->
+<div class="card">
+  <div class="section-bar">
+    <h2>🗂️ Sección actual:</h2>
+    <select id="seccionSelect"></select>
+    <button id="btnNuevaSeccion" class="btn-primary">Nueva sección</button>
+    <div id="contenedorRenombrar" style="display:none; margin-bottom:1rem;" class="card">
+        <label>Nuevo nombre para la sección:</label>
+        <input type="text" id="inputNuevoNombre" placeholder="Ej: Pasillo_Norte">
+        <div style="display:flex; gap:10px;">
+            <button class="btn-primary" id="btnConfirmarRenombrar">Confirmar</button>
+            <button class="btn-secondary" id="btnCancelarRenombrar">Cancelar</button>
+        </div>
+    </div>
+
+<button class="btn-secondary" id="btnMostrarRenombrar">Renombrar Sección</button>
+  </div>
+</div>
+
+<!-- Formulario desviaciones -->
+<div class="card">
+<form id="formDesv">
+<h2 id="formTitulo">Nueva desviación</h2>
+
+<label>Tipo</label>
+<select id="tipo">
+  <option value="">Selecciona…</option>
+  <option>Almacenamiento</option>
+  <option>Productos químicos</option>
+  <option>Mangueras</option>
+  <option>Herramientas</option>
+  <option>Equipos e instalaciones</option>
+  <option>Elementos de seguridad y EPI's</option>
+  <option>Zonas de paso y comunes</option>
+  <option>Señalización y comunicación</option>
+  <option>Residuos</option>
+</select>
+
+<label>Descripción</label>
+<textarea id="descripcion"></textarea>
+
+<label>Ubicación</label>
+<input type="text" id="ubicacion">
+
+<label>Foto</label>
+<input type="file" id="foto" accept="image/*" capture="environment">
+
+<button type="submit" class="btn-primary" id="btnGuardar">Añadir desviación</button>
+<button type="button" class="btn-secondary" id="btnCancelarEdicion" style="display:none;">Cancelar edición</button>
+</form>
+</div>
+
+<!-- Lista desviaciones -->
+<div class="card">
+<h2><span>📋</span> Desviaciones añadidas</h2>
+<div id="lista"></div>
+<p id="noDatos">No hay desviaciones aún.</p>
+</div>
+
+<!-- Exportación -->
+<div class="card">
+    <h2><span>🚀</span> Exportar Informe</h2>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
+        <button class="btn-primary" id="btnDescargarHTML"" style="flex:1;">🌐 HTML</button>
+        <button class="btn-primary" id="btnDescargarPDF" style="flex:1;">📕 PDF</button>
+    </div>
+</div>
+
+<!-- Zona avanzada -->
+<div class="card advanced">
+  <h2><span>⚙️</span> Ajustes Avanzados</h2>
+  
+  <div style="margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px;">
+      <span id="espacioTexto">Espacio ocupado: 0%</span>
+      <span id="espacioMB">0 / 5 MB</span>
+    </div>
+    <div style="background: #e0e0e0; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; border: 1px solid #ccc;">
+      <div id="barraProgreso" style="background: #1976d2; width: 0%; height: 100%; transition: width 0.3s;"></div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
+    <button id="btnExportarJSON" class="btn-primary" style="flex:1;">📤 Exportar</button>
+    <button id="btnImportarJSON" class="btn-primary" style="flex:1;">📥 Importar</button>
+    <input type="file" id="inputImportar" style="display:none" accept=".json">
+  </div>
+
+  <p style="margin-top:0; font-size:0.9rem; color:#555;">Borrar datos:</p>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
+      <button id="btnBorrarSeccion" class="btn-danger" style="flex:1;">🗑️ Sección actual</button>
+      <button id="btnBorrarTodas" class="btn-danger" style="flex:1;">🧹 Borrar todo</button>
+    </div>
+</div>
+
+</div>
+
+<script>
+let desviaciones = [];
+let editIndex = null;
+
+// Gestión de secciones
+const SECCIONES_KEY = "desviaciones_v1_9_secciones";
+const SECCION_ACTUAL_KEY = "desviaciones_v1_9_seccion_actual";
+const DATA_PREFIX = "desviaciones_v1_9_";
+
+function $(id){ return document.getElementById(id); }
+
+const ORDEN_TIPOS = [
+  "Almacenamiento","Productos químicos","Mangueras","Herramientas",
+  "Equipos e instalaciones","Elementos de seguridad y EPI's",
+  "Zonas de paso y comunes","Señalización y comunicación","Residuos"
+];
+
+function cargarSecciones(){
+  let lista = [];
+  try{
+    const raw = localStorage.getItem(SECCIONES_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) lista = parsed;
+    }
+  }catch(e){}
+  if(lista.length === 0){
+    lista = ["seccion_1"];
+    localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
+  }
+  return lista;
+}
+
+function guardarSecciones(lista){
+  localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
+}
+
+function getSeccionActualId(){
+  let id = localStorage.getItem(SECCION_ACTUAL_KEY);
+  const secciones = cargarSecciones();
+  if(!id || !secciones.includes(id)){
+    id = secciones[0];
+    localStorage.setItem(SECCION_ACTUAL_KEY, id);
+  }
+  return id;
+}
+
+function setSeccionActualId(id){
+  localStorage.setItem(SECCION_ACTUAL_KEY, id);
+}
+
+function cargarDatosSeccion(id){
+  desviaciones = [];
+  try{
+    const raw = localStorage.getItem(DATA_PREFIX + id);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) desviaciones = parsed;
+    }
+  }catch(e){}
+  editIndex = null;
+  $("btnGuardar").textContent = "Añadir desviación";
+  $("btnCancelarEdicion").style.display = "none";
+  render();
+}
+
+function guardarDatosSeccion(id){
+    localStorage.setItem(DATA_PREFIX + id, JSON.stringify(desviaciones));
+    actualizarIndicadorEspacio();
+}
+
+function actualizarSelectorSecciones(){
+  const secciones = cargarSecciones();
+  const actual = getSeccionActualId();
+  const sel = $("seccionSelect");
+  sel.innerHTML = "";
+  secciones.forEach(id=>{
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = id;
+    if(id === actual) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// Reducir imagen
+async function reducir(file){
+ return new Promise(res=>{
+  let r=new FileReader();
+  r.onload=e=>{
+   let img=new Image();
+   img.onload=()=>{
+    let MAX=500; // Mantenemos 500px de ancho
+    let sc=MAX/img.width;
+    let c=document.createElement("canvas");
+    c.width=MAX;
+    c.height=img.height*sc;
+    const ctx = c.getContext("2d");
+
+    // Fondo blanco para evitar transparencias negras en JPEG
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img,0,0,c.width,c.height);
+
+    // CAMBIO CLAVE: "image/jpeg" con calidad 0.6
+    // Esto hace que la foto pase de 400KB a unos 50KB.
+    res(c.toDataURL("image/jpeg", 0.6));
+   };
+   img.src=e.target.result;
+  };
+  r.readAsDataURL(file);
+ });
+}
+
+// Render lista
+function render(){
+ $("formTitulo").textContent = editIndex === null ? `➕ Nueva desviación (${desviaciones.length})` : "✏️ Editar desviación";
+ let lista=$("lista");
+ lista.innerHTML="";
+ if(desviaciones.length===0){$("noDatos").style.display="block";return;}
+ $("noDatos").style.display="none";
+
+ [...desviaciones].reverse().forEach((d,i)=>{
+  let real=desviaciones.length-1-i;
+  let div=document.createElement("div");
+  div.className="desv-item";
+
+  let left=document.createElement("div");
+  left.style.display="flex";
+
+  if(d.foto){
+    let img=document.createElement("img");
+    img.src=d.foto; img.className="thumb";
+    
+    img.style.cursor = "zoom-in"; // Cambia el cursor para indicar que es clickeable
+    img.onclick = () => ampliarImagen(d.foto); // Llama a la función que creamos antes
+    
+    left.appendChild(img);
+  }
+
+  let info = document.createElement("div");
+    // Añadimos la clase info-text-wrap para que el CSS la controle
+    info.className = "info-text-wrap"; 
+    info.innerHTML = `<strong>${d.tipo}</strong><br>${d.descripcion || ""}<br><span style='color:#666; font-size:12px;'>📍 ${d.ubicacion || "—"}</span>`;
+    left.appendChild(info);
+
+  let right=document.createElement("div");
+  right.innerHTML=`<button class='btn-secondary btn-small' onclick='editar(${real})'>Editar</button>
+  <button class='btn-danger btn-small' onclick='borrar(${real})'>Borrar</button>`;
+
+  div.appendChild(left); div.appendChild(right);
+  lista.appendChild(div);
+ });
+}
+
+// Form submit
+async function procesarGuardado() {
+    let tipo = $("tipo").value;
+    if (!tipo) { alert("Selecciona un tipo"); return; }
+    
+    let desc = $("descripcion").value.trim();
+    let ub = $("ubicacion").value.trim();
+    let file = $("foto").files[0];
+    let foto = null;
+
+    if (file) foto = await reducir(file);
+    let obj = { tipo, descripcion: desc, ubicacion: ub, foto };
+
+    if (editIndex === null) {
+        desviaciones.push(obj);
+    } else {
+        if (!foto) obj.foto = desviaciones[editIndex].foto;
+        desviaciones[editIndex] = obj;
+        editIndex = null;
+        $("btnGuardar").textContent = "Añadir desviación";
+        $("btnCancelarEdicion").style.display = "none";
+    }
+
+    // Limpiar campos
+    $("descripcion").value = ""; 
+    $("ubicacion").value = ""; 
+    $("foto").value = ""; 
+    $("tipo").value = "";
+
+    guardarDatosSeccion(getSeccionActualId());
+    render();
+    console.log("✅ Guardado automático");
+}
+
+// Evento del formulario original (clic en botón)
+$("formDesv").addEventListener("submit", async e => {
+    e.preventDefault();
+    await procesarGuardado();
+});
+
+// NUEVO: Evento automático al terminar de hacer la foto
+$("foto").onchange = async () => {
+    if ($("foto").files && $("foto").files.length > 0) {
+        // Un pequeño retraso visual para que el usuario vea que algo pasa
+        $("btnGuardar").textContent = "Procesando...";
+        await procesarGuardado();
+        $("btnGuardar").textContent = "Añadir desviación";
+    }
+};
+
+function editar(i) {
+    editIndex = i; 
+    let d = desviaciones[i];
+    
+    // Rellenamos los campos
+    $("tipo").value = d.tipo; 
+    $("descripcion").value = d.descripcion; 
+    $("ubicacion").value = d.ubicacion;
+    
+    // Cambiamos textos de la interfaz
+    $("btnGuardar").textContent = "Guardar cambios"; 
+    $("btnCancelarEdicion").style.display = "inline-block";
+    
+    // Usamos innerHTML para el icono
+    $("formTitulo").innerHTML = "✏️ Editar desviación";
+
+    // --- EL SCROLL AUTOMÁTICO ---
+    // Esto sube la pantalla hasta el inicio del formulario
+    $("formDesv").scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function borrar(i){
+ if(!confirm("¿Seguro que quieres borrar esta desviación?"))return;
+ desviaciones.splice(i,1);
+ guardarDatosSeccion(getSeccionActualId());
+ render();
+}
+
+$("btnCancelarEdicion").onclick=()=>{
+ editIndex=null;
+ $("btnGuardar").textContent="Añadir desviación";
+ $("btnCancelarEdicion").style.display="none";
+ render();
+ $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
+};
+
+// Nueva sección
+$("btnNuevaSeccion").onclick=()=>{
+  let nombre = prompt("Nombre de la nueva sección (usa letras, números y guiones bajos \"_\"):");
+  if(!nombre) return;
+  nombre = nombre.trim();
+  if(!nombre) return;
+  nombre = nombre.replace(/\s+/g, "_");
+  nombre = nombre.replace(/[^A-Za-z0-9_]/g, "");
+  if(!nombre){
+    alert("Nombre no válido.");
+    return;
+  }
+  let secciones = cargarSecciones();
+  if(secciones.includes(nombre)){
+    alert("Ya existe una sección con ese nombre.");
+    return;
+  }
+  secciones.push(nombre);
+  guardarSecciones(secciones);
+  setSeccionActualId(nombre);
+  desviaciones = [];
+  editIndex = null;
+  actualizarSelectorSecciones();
+  cargarDatosSeccion(nombre);
+};
+
+// Renombrar sección
+// Mostrar/Ocultar el panel de renombrado
+$("btnMostrarRenombrar").onclick = () => {
+    $("inputNuevoNombre").value = getSeccionActualId();
+    $("contenedorRenombrar").style.display = "block";
+    $("btnMostrarRenombrar").style.display = "none";
+};
+
+$("btnCancelarRenombrar").onclick = () => {
+    $("contenedorRenombrar").style.display = "none";
+    $("btnMostrarRenombrar").style.display = "inline-block";
+};
+
+// Lógica de guardado real
+$("btnConfirmarRenombrar").onclick = () => {
+    const actual = getSeccionActualId();
+    let nuevo = $("inputNuevoNombre").value;
+
+    if (!nuevo) return;
+    nuevo = nuevo.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]/g, "");
+
+    if (!nuevo || nuevo === actual) {
+        $("btnCancelarRenombrar").click();
+        return;
+    }
+
+    let secciones = cargarSecciones();
+    if (secciones.includes(nuevo)) {
+        alert("Ese nombre ya existe.");
+        return;
+    }
+
+    // Mover datos
+    const datos = localStorage.getItem(DATA_PREFIX + actual);
+    if (datos !== null) {
+        localStorage.setItem(DATA_PREFIX + nuevo, datos);
+        localStorage.removeItem(DATA_PREFIX + actual);
+    }
+
+    // Actualizar lista de secciones
+    secciones = secciones.map(id => id === actual ? nuevo : id);
+    guardarSecciones(secciones);
+    setSeccionActualId(nuevo);
+
+    // En lugar de alert, recargamos directamente para limpiar Vivaldi
+    window.location.reload();
+};
+// Cambio de sección
+$("seccionSelect").addEventListener("change",()=>{
+  const id = $("seccionSelect").value;
+  setSeccionActualId(id);
+  cargarDatosSeccion(id);
+});
+
+// Borrar sección
+$("btnBorrarSeccion").onclick=()=>{
+  const secciones = cargarSecciones();
+  const actual = getSeccionActualId();
+  if(!confirm("¿Borrar la sección \""+actual+"\" y todas sus desviaciones?")) return;
+  localStorage.removeItem(DATA_PREFIX + actual);
+  const nuevas = secciones.filter(s=>s!==actual);
+  if(nuevas.length === 0){
+    nuevas.push("seccion_1");
+    localStorage.setItem(DATA_PREFIX + "seccion_1", JSON.stringify([]));
+  }
+  guardarSecciones(nuevas);
+  setSeccionActualId(nuevas[0]);
+  actualizarSelectorSecciones();
+  cargarDatosSeccion(getSeccionActualId());
+};
+
+// Borrar todas las secciones
+$("btnBorrarTodas").onclick=()=>{
+  if(!confirm("¿Borrar TODAS las secciones y todas las desviaciones?")) return;
+  const secciones = cargarSecciones();
+  secciones.forEach(id=>{
+    localStorage.removeItem(DATA_PREFIX + id);
+  });
+  localStorage.removeItem(SECCIONES_KEY);
+  localStorage.removeItem(SECCION_ACTUAL_KEY);
+  const lista = ["seccion_1"];
+  guardarSecciones(lista);
+  setSeccionActualId("seccion_1");
+  desviaciones = [];
+  editIndex = null;
+  actualizarSelectorSecciones();
+  cargarDatosSeccion("seccion_1");
+};
+
+// Resumen
+function resumen(grupos){
+ let arr=[];
+ ORDEN_TIPOS.forEach(t=>{
+  if(grupos[t]&&grupos[t].length>0){
+   let n=grupos[t].length;
+   arr.push(`${t}: ${n} ${n===1?"desviación":"desviaciones"}`);
+  }
+ });
+ return arr;
+}
+
+// Exportar HTML
+$("btnDescargarHTML").onclick = () => {
+    if (desviaciones.length === 0) {
+        alert("No hay datos para exportar");
+        return;
+    }
+
+    // Capturamos la sección seleccionada
+    const combo = document.getElementById("seccionSelect");
+    const nombreSeccion = combo.options[combo.selectedIndex].text;
+
+    // Llamamos a la nueva función externa
+    generarHTML(desviaciones, nombreSeccion);
+};
+
+// Exportar PDF
+$("btnDescargarPDF").onclick = async () => {
+    // 1. Verificación básica
+    if (desviaciones.length === 0) {
+        alert("No hay datos para exportar");
+        return;
+    }
+
+    // --- NUEVO: Capturar el valor del desplegable ---
+    // Usamos el ID del select que mencionaste: 'seccionSelect'
+    const combo = document.getElementById("seccionSelect");
+    const nombreSeccion = combo.options[combo.selectedIndex].text; 
+
+    // 2. Llamada al módulo externo
+    try {
+        // PASAMOS 'nombreSeccion' en lugar del texto fijo entre comillas
+        await generarPDF(desviaciones, nombreSeccion);
+    } catch (error) {
+        console.error("Error en la exportación:", error);
+        alert("Error al generar el PDF. Revisa la consola.");
+    }
+};
+
+
+// Control de versiones y carga automática de CSS y JS
+(function() {
+  const ahora = new Date();
+  const v = ahora.getFullYear() + 
+            ("0" + (ahora.getMonth() + 1)).slice(-2) + 
+            ("0" + ahora.getDate()).slice(-2) + 
+            ("0" + ahora.getHours()).slice(-2) + 
+            ("0" + ahora.getMinutes()).slice(-2) + 
+            ("0" + ahora.getSeconds()).slice(-2);
+
+  // --- CARGA DEL CSS ---
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.type = 'text/css';
+  link.href = `css/style.css?v=${v}`;
+  document.head.appendChild(link);
+
+  // --- CARGA DE LOS SCRIPTS ---
+  const scripts = ["js/export-pdf.js", "js/export-html.js"];
+  scripts.forEach(src => {
+    const s = document.createElement('script');
+    s.src = `${src}?v=${v}`;
+    s.async = false; 
+    document.head.appendChild(s);
+  });
+
+  console.log("🚀 Sistema cargado con versión: " + v);
+  
+  // Ejecutamos el render inicial por si ya había datos en localStorage
+  if(typeof render === "function") render();
+})();
+
+// --- FUNCIONES DE MEMORIA Y BACKUP PARA V1.9 ---
+
+function actualizarIndicadorEspacio() {
+    let totalCaracteres = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
+        totalCaracteres += (localStorage.getItem(key).length + key.length);
+    }
+    const limite = 5 * 1024 * 1024; // 5MB
+    const porcentaje = Math.min((totalCaracteres / limite) * 100, 100).toFixed(1);
+    const mbOcupados = (totalCaracteres / (1024 * 1024)).toFixed(2);
+
+    if($("espacioTexto")){
+        $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
+        $("espacioMB").textContent = `${mbOcupados} / 5 MB`;
+        $("barraProgreso").style.width = porcentaje + "%";
+        $("barraProgreso").style.background = porcentaje > 80 ? "#d32f2f" : (porcentaje > 50 ? "#f57c00" : "#1976d2");
+    }
+}
+
+// EXPORTAR (BACKUP)
+$("btnExportarJSON").onclick = () => {
+    const backup = {
+        app: "Informe O&L v1.9",
+        fecha: new Date().toISOString(),
+        secciones: JSON.parse(localStorage.getItem("desviaciones_v1_9_secciones") || '[]'),
+        datos: {}
+    };
+
+    // Buscamos todas las claves que empiecen por tu prefijo real
+    for (let i = 0; i < localStorage.length; i++) {
+        const clave = localStorage.key(i);
+        if (clave.startsWith("desviaciones_v1_9_") && clave !== "desviaciones_v1_9_secciones" && clave !== "desviaciones_v1_9_seccion_actual") {
+            try {
+                backup.datos[clave] = JSON.parse(localStorage.getItem(clave));
+            } catch (e) {}
+        }
+    }
+
+    const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+};
+
+// IMPORTAR (RESTAURAR)
+$("btnImportarJSON").onclick = () => $("inputImportar").click();
+
+$("inputImportar").onchange = (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = (event) => {
+        try {
+            const backup = JSON.parse(event.target.result);
+            if (!backup.secciones || !backup.datos) throw new Error("Archivo no válido");
+            
+            if (confirm("Se borrarán los datos actuales para cargar el backup. ¿Continuar?")) {
+                localStorage.clear();
+                localStorage.setItem("desviaciones_v1_9_secciones", JSON.stringify(backup.secciones));
+                for (const clave in backup.datos) {
+                    localStorage.setItem(clave, JSON.stringify(backup.datos[clave]));
+                }
+                alert("✅ Importación completada.");
+                location.reload();
+            }
+        } catch (err) { alert("Error: " + err.message); }
+    };
+    lector.readAsText(archivo);
+};
+
+
+// --- LÓGICA DE AMPLIACIÓN DE IMÁGENES ---
+let timerCierreModal; // Variable para el temporizador
+
+function ampliarImagen(src) {
+    clearTimeout(timerCierreModal); // Cancela cualquier temporizador previo
+    const modal = $("modalImagen");
+    const img = $("imgModal");
+    
+    img.src = src; // Carga la imagen pulsada
+    modal.style.display = "block"; // Muestra el modal
+
+    // Temporizador: cerrar automáticamente tras 5 segundos
+    timerCierreModal = setTimeout(() => {
+        cerrarImagen(modal);
+    }, 5000); // 5000ms = 5 segundos
+}
+
+function cerrarImagen(modal) {
+    clearTimeout(timerCierreModal); // Cancela el temporizador si cierran manualmente
+    modal.style.display = "none"; // Oculta el modal
+}
+
+
+// Inicio
+(function init(){
+    const secciones = cargarSecciones();
+    const actual = getSeccionActualId();
+    actualizarSelectorSecciones();
+    cargarDatosSeccion(actual);
+    actualizarIndicadorEspacio();
+})();
+</script>
+
+<div id="modalImagen" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); cursor: pointer;" onclick="cerrarImagen(this)">
+    <img id="imgModal" style="margin: auto; display: block; max-width: 90%; max-height: 90%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    <span style="position: absolute; top: 15px; right: 25px; color: white; font-size: 35px; font-weight: bold;">&times;</span>
+</div>
+
+</body></html>
+
+--- FILE: ./js/export-pdf.js ---
+/**
+ * CONFIGURACIÓN GLOBAL DEL PDF
+ */
+const PDF_CONFIG = {
+    MARGEN: 15,
+    COMPRESION_PDF: true, // Esto debe estar en true
+    COMPRESION_IMG: 'SLOW', // Cambia 'FAST' por 'MEDIUM' o 'SLOW' (comprime más)
+    FORMATO_IMG: 'JPEG',        
+    COLOR_TITULO: [200, 230, 201], 
+    COLOR_RESUMEN: [245, 245, 245], 
+    TAMANO_TITULO: 16,          
+    TAMANO_ENCABEZADO: 11,      
+    TAMANO_TEXTO: 10,           
+    TAMANO_RESUMEN: 9.5         
+};
+
+// Función interna para reducir la foto antes de insertarla en el PDF
+function achicarParaPDF(base64) {
+    return new Promise(res => {
+        const img = new Image();
+        img.src = base64;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            // Para un PDF, con 800px de ancho sobra resolución y ahorra un 70% de espacio
+            const MAX_W = 800; 
+            const scale = MAX_W / img.width;
+            canvas.width = MAX_W;
+            canvas.height = img.height * scale;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            res(canvas.toDataURL('image/jpeg', 0.6)); // Calidad 60% suficiente para impresión
+        };
+    });
+}
+
+async function generarPDF(desviaciones, seccionId) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ compress: PDF_CONFIG.COMPRESION_PDF, unit: 'mm', format: 'a4' });
+    
+    const margin = PDF_CONFIG.MARGEN; 
+    const pageWidth = 210 - (margin * 2); 
+    const ph = doc.internal.pageSize.getHeight();
+    let y = margin + 10; 
+
+    // --- FECHA Y TÍTULO ---
+    const fecha = new Date();
+    const codigoFecha = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+    const totalGlobal = desviaciones.length;
+    let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(PDF_CONFIG.TAMANO_TITULO);
+    doc.text(`${codigoFecha} - Informe de O&L de ${nombreSeccion.toUpperCase()} - ${totalGlobal} desviaciones`, margin, y);
+    
+    doc.setDrawColor(...PDF_CONFIG.COLOR_TITULO); 
+    doc.setLineWidth(0.5);
+    doc.line(margin, y + 2, margin + pageWidth, y + 2);
+    y += 10;
+
+    // --- GRUPOS Y RESUMEN ---
+    const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
+    const grupos = {};
+    desviaciones.forEach(d => { if (!grupos[d.tipo]) grupos[d.tipo] = []; grupos[d.tipo].push(d); });
+
+    const tiposConDatos = ORDEN_TIPOS.filter(t => grupos[t] && grupos[t].length > 0);
+    const alturaCuadro = (Math.ceil(tiposConDatos.length / 2) * 6) + 8; 
+
+    doc.setFillColor(...PDF_CONFIG.COLOR_RESUMEN);
+    doc.rect(margin, y, pageWidth, alturaCuadro, 'F');
+    doc.setFontSize(PDF_CONFIG.TAMANO_RESUMEN);
+    doc.text("RESUMEN:", margin + 2, y + 5);
+    
+    let resY = y + 11;
+    let colStep = 0;
+    doc.setFont("helvetica", "normal");
+    tiposConDatos.forEach((t) => {
+        const posX = colStep % 2 === 0 ? margin + 5 : margin + (pageWidth / 2) + 5;
+        doc.text(`• ${t}: ${grupos[t].length}`, posX, resY);
+        if (colStep % 2 !== 0) resY += 6;
+        colStep++;
+    });
+
+    y = y + alturaCuadro + 10; 
+
+    const colW = pageWidth / 2;
+    const contentStartX = 24; 
+
+    const dims = (base) => new Promise(ok => {
+        if(!base) return ok({W:0, H:0});
+        let img = new Image();
+        img.onload = () => {
+            let maxW = colW - 4; 
+            let r = img.width / img.height;
+            let W = maxW, H = maxW / r;
+            if (H > 70) { H = 70; W = H * r; }
+            ok({ W, H });
+        };
+        img.src = base;
+    });
+
+    // --- BUCLE DE CONTENIDO ---
+    for (const t of ORDEN_TIPOS) {
+        if (!grupos[t] || grupos[t].length === 0) continue;
+
+        if (y + 15 > ph - margin) { doc.addPage(); y = margin + 5; }
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(PDF_CONFIG.TAMANO_ENCABEZADO);
+        doc.setFillColor(...PDF_CONFIG.COLOR_TITULO); 
+        doc.rect(margin, y, pageWidth, 6, 'F');
+        doc.text(`${t.toUpperCase()} (${grupos[t].length})`, margin + 2, y + 4.2);
+        y += 7; 
+
+        for (const d of grupos[t]) {
+            let W = 0, H = 0;
+            if (d.foto) { const dimg = await dims(d.foto); W = dimg.W; H = dimg.H; }
+
+            doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
+            const spaceForText = colW - contentStartX - 2;
+            const ubiLines = doc.splitTextToSize(String(d.ubicacion || ""), spaceForText);
+            const descLines = doc.splitTextToSize(String(d.descripcion || ""), spaceForText);
+            
+            // --- AJUSTES DE ESPACIADO ---
+            const lineH = PDF_CONFIG.TAMANO_TEXTO * 0.42; 
+            const paddingAfterFoto = 4;   // Hueco recuperado entre foto y texto
+            const gapBetweenFields = 1.2; // Espacio mínimo entre líneas
+            const paddingBottom = 1;      // Espacio mínimo al final de la celda
+            
+            // Calculamos altura total sumando solo lo estrictamente necesario
+            const textSectionH = (ubiLines.length * lineH) + (descLines.length * lineH) + gapBetweenFields; 
+            let cellH = 2 + (H > 0 ? H + paddingAfterFoto : 0) + textSectionH + paddingBottom;
+
+            if (y + cellH > ph - margin) { doc.addPage(); y = margin + 5; }
+
+            doc.setDrawColor(200);
+            doc.rect(margin, y, colW, cellH);
+            doc.rect(margin + colW, y, colW, cellH);
+
+            let curY = y + 2;
+
+            if (H > 0 && d.foto) {
+                const fotoMini = await achicarParaPDF(d.foto);
+                //doc.addImage(d.foto, PDF_CONFIG.FORMATO_IMG, margin + (colW - W) / 2, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
+                doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, margin + (colW - W) / 2, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
+                curY += H + paddingAfterFoto; // Aplicamos el hueco aquí
+            }
+
+            // --- TEXTOS ---
+            doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
+            
+            // Ubicación
+            doc.setFont(undefined, "bold");
+            doc.text("Ubicación:", margin + 2, curY);
+            doc.setFont(undefined, "normal");
+            doc.text(ubiLines, margin + contentStartX, curY);
+            
+            curY += (ubiLines.length * lineH) + gapBetweenFields; 
+
+            // Descripción
+            doc.setFont(undefined, "bold");
+            doc.text("Descripción:", margin + 2, curY);
+            doc.setFont(undefined, "normal");
+            doc.text(descLines, margin + contentStartX, curY);
+
+            y += cellH; 
+        }
+        y += 6; 
+    }
+    doc.save(`${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.pdf`);
+}
+
+--- FILE: ./js/export-html (copia).js ---
+// 1. COMPRESIÓN DE IMÁGENES
+// Busca esta función al principio del archivo js/export-html.js
+function comprimirBase64(base64Str, calidad = 0.9) { // Subimos calidad a 0.85
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const MAX_WIDTH = 1600; // Antes 800, ahora 1600 para alta definición
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Generamos un JPEG de alta calidad
+            resolve(canvas.toDataURL('image/jpeg', calidad));
+        };
+        img.onerror = () => resolve(base64Str);
+    });
+}
+
+// 2. GENERACIÓN DEL INFORME
+async function generarHTML(desviaciones, seccionId) {
+    const fecha = new Date();
+    const codigoFecha = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+    const totalGlobal = desviaciones.length;
+    let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
+
+    const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
+    const grupos = {};
+    desviaciones.forEach(d => { if (!grupos[d.tipo]) grupos[d.tipo] = []; grupos[d.tipo].push(d); });
+    
+    let resumenHTML = "";
+    ORDEN_TIPOS.filter(t => grupos[t] && grupos[t].length > 0).forEach(t => {
+        const idLimpio = t.replace(/\s+/g, '_');
+        resumenHTML += `<li data-tipo="${t}"><strong>${t}:</strong> ${grupos[t].length} <span class="cont-corr" id="corr_${idLimpio}">(0 corregidas)</span></li>`;
+    });
+
+    let html = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Informe O&L - ${nombreSeccion}</title>
+        <style>
+            body { font-family: Segoe UI, Arial, sans-serif; margin: 40px; color: #333; padding-bottom: 100px; }
+            .header-title { font-size: 20px; font-weight: bold; border-bottom: 2px solid rgb(200, 230, 201); padding-bottom: 5px; margin-bottom: 10px; }
+            .resumen-box { background: rgb(245, 245, 245); padding: 15px; border-radius: 4px; margin-bottom: 25px; border: 1px solid #eee; }
+            .resumen-box h2 { font-size: 14px; margin-top: 0; color: #555; text-decoration: underline; margin-bottom: 8px; }
+            .resumen-list { display: grid; grid-template-columns: 1fr 1fr; list-style: none; padding: 0; font-size: 13px; margin: 0; }
+            .resumen-list li::before { content: "• "; color: #666; }
+            .cont-corr { color: #2e7d32; font-weight: bold; margin-left: 5px; }
+            .categoria-header { background: rgb(200, 230, 201); padding: 6px 12px; font-weight: bold; margin-top: 25px; border: 1px solid #ccc; border-bottom: none; font-size: 14px; }
+            .fila-desviacion { display: grid; grid-template-columns: 1fr 1fr; gap: 0; page-break-inside: avoid; }
+            .cell { border: 0.5px solid #ccc; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 150px; position: relative; }
+            .cell-subsanacion { background-color: #fafafa; }
+            .img-container img { max-width: 100%; max-height: 250px; border-radius: 2px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto;}
+            .info-row { font-size: 13px; margin-bottom: 4px; display: flex; }
+            .label { font-weight: bold; min-width: 100px; }
+            
+            /* BOTONES FLOTANTES */
+            .controls-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+            .btn-action { padding: 12px 20px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: none; color: white; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+            .btn-save { background: #2e7d32; }
+            .btn-filter { background: #1976d2; }
+            .btn-filter.active { background: #f57c00; box-shadow: inset 0 2px 5px rgba(0,0,0,0.4); }
+            
+            .btn-add { background: #1976d2; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+            .btn-edit { background: #ffa000; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; align-self: flex-end; }
+            textarea { width: 100%; border: 1px solid #ccc; font-family: inherit; font-size: 13px; margin-top: 5px; padding: 5px; box-sizing: border-box; resize: vertical; }
+            .texto-subsanado { font-size: 13px; margin-top: 5px; white-space: pre-wrap; }
+            .overlay-msg { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.6); color:white; padding:5px 10px; border-radius:4px; font-size:11px; pointer-events:none; }
+            
+            @media print { .no-print, .controls-container, .btn-edit, .btn-add, .overlay-msg, input { display: none !important; } }
+        </style>
+    </head>
+    <body>
+        <div class="header-title">${codigoFecha} - Informe de O&L de ${nombreSeccion.toUpperCase()} - ${totalGlobal} desviaciones</div>
+        <div class="resumen-box">
+            <h2>RESUMEN:</h2>
+            <ul class="resumen-list">${resumenHTML}</ul>
+        </div>
+
+        <div class="controls-container no-print">
+            <button class="btn-action btn-filter" id="btnFiltro" onclick="toggleFiltro()">🔍 VER SOLO PENDIENTES</button>
+            <button class="btn-action btn-save" onclick="descargarVersionEditable()">💾 GUARDAR CAMBIOS</button>
+        </div>
+
+        <div id="contenido-informe">`;
+
+    for (const t of ORDEN_TIPOS) {
+        if (!grupos[t] || grupos[t].length === 0) continue;
+        html += `<div class="categoria-header" data-tipo="${t}">${t.toUpperCase()} (${grupos[t].length})</div>`;
+        for (const d of grupos[t]) {
+            let fotoOriginal = d.foto ? await comprimirBase64(d.foto, 0.5) : "";
+            html += `
+            <div class="fila-desviacion" data-tipo="${t}" data-corregida="false">
+                <div class="cell">
+                    ${fotoOriginal ? `<div class="img-container"><img src="${fotoOriginal}"></div>` : ''}
+                    <div class="info-row"><span class="label">Ubicación:</span><span>${d.ubicacion || '—'}</span></div>
+                    <div class="info-row"><span class="label">Descripción:</span><span>${d.descripcion}</span></div>
+                </div>
+                <div class="cell cell-subsanacion">
+                    <div class="subsanacion-view" style="display:none;"></div>
+                    <div class="subsanacion-edit" style="display:none;">
+                        <div class="img-preview"></div>
+                        <div class="info-row"><span class="label">Acción:</span></div>
+                        <textarea rows="3" placeholder="Describe la corrección..."></textarea>
+                        <button class="btn-add" onclick="finalizarEdicion(this)" style="background:#2e7d32; margin-top:10px;">✅ ACEPTAR</button>
+                    </div>
+                    <div class="upload-zone" style="text-align:center; margin:auto;">
+                        <button class="btn-add" onclick="this.nextElementSibling.click()">➕ AÑADIR SUBSANACIÓN</button>
+                        <input type="file" accept="image/*" style="display:none;" onchange="procesarFoto(this)">
+                    </div>
+                </div>
+            </div>`;
+        }
+    }
+
+    html += `
+        </div>
+        <script>
+            let filtroActivo = false;
+
+            function actualizarResumen() {
+                const categorias = {};
+                document.querySelectorAll('.fila-desviacion').forEach(fila => {
+                    const tipo = fila.getAttribute('data-tipo');
+                    if (!categorias[tipo]) categorias[tipo] = { total: 0, corr: 0 };
+                    categorias[tipo].total++;
+                    if (fila.getAttribute('data-corregida') === 'true') {
+                        categorias[tipo].corr++;
+                    }
+                });
+
+                for (const [tipo, stats] of Object.entries(categorias)) {
+                    const idLimpio = "corr_" + tipo.replace(/\\s+/g, '_');
+                    const span = document.getElementById(idLimpio);
+                    if (span) {
+                        span.innerText = "(" + stats.corr + " corregidas)";
+                        span.style.color = (stats.corr === stats.total) ? "#2e7d32" : "#666";
+                    }
+                }
+                if(filtroActivo) aplicarFiltro();
+            }
+
+            function toggleFiltro() {
+                filtroActivo = !filtroActivo;
+                const btn = document.getElementById('btnFiltro');
+                btn.innerText = filtroActivo ? "👁️ VER TODO EL INFORME" : "🔍 VER SOLO PENDIENTES";
+                btn.classList.toggle('active', filtroActivo);
+                aplicarFiltro();
+            }
+
+            function aplicarFiltro() {
+                const categoriasIncompletas = new Set();
+                
+                // 1. Mostrar/Ocultar Filas
+                document.querySelectorAll('.fila-desviacion').forEach(fila => {
+                    const estaCorregida = fila.getAttribute('data-corregida') === 'true';
+                    if (filtroActivo && estaCorregida) {
+                        fila.style.display = 'none';
+                    } else {
+                        fila.style.display = 'grid';
+                        categoriasIncompletas.add(fila.getAttribute('data-tipo'));
+                    }
+                });
+
+                // 2. Mostrar/Ocultar Cabeceras de categoría
+                document.querySelectorAll('.categoria-header').forEach(header => {
+                    const tipo = header.getAttribute('data-tipo');
+                    header.style.display = (filtroActivo && !categoriasIncompletas.has(tipo)) ? 'none' : 'block';
+                });
+            }
+
+            async function procesarFoto(input) {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const cell = input.closest('.cell');
+                    const fotoComp = await comprimirImagen(e.target.result);
+                    abrirEditor(cell, fotoComp, "");
+                    input.value = "";
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function abrirEditor(cell, foto, texto) {
+                cell.querySelector('.upload-zone').style.display = 'none';
+                cell.querySelector('.subsanacion-view').style.display = 'none';
+                const editZone = cell.querySelector('.subsanacion-edit');
+                editZone.querySelector('.img-preview').innerHTML = \`
+                    <div class="img-container" style="cursor:pointer; position:relative;" onclick="this.closest('.cell').querySelector('input[type=file]').click()">
+                        <img src="\${foto}">
+                        <div class="overlay-msg">Click para cambiar imagen</div>
+                    </div>\`;
+                editZone.querySelector('textarea').value = texto;
+                editZone.style.display = 'block';
+            }
+
+            function finalizarEdicion(btn) {
+                const fila = btn.closest('.fila-desviacion');
+                const cell = btn.closest('.cell');
+                const foto = cell.querySelector('.img-preview img').src;
+                const texto = cell.querySelector('textarea').value;
+                const viewZone = cell.querySelector('.subsanacion-view');
+                
+                viewZone.innerHTML = \`
+                    <div class="img-container"><img src="\${foto}"></div>
+                    <div class="info-row"><span class="label">Acción:</span></div>
+                    <div class="texto-subsanado">\${texto}</div>
+                    <button class="btn-edit" onclick="editarExistente(this)">✏️ Modificar</button>\`;
+                
+                cell.querySelector('.subsanacion-edit').style.display = 'none';
+                viewZone.style.display = 'block';
+                fila.setAttribute('data-corregida', 'true');
+                actualizarResumen();
+            }
+
+            function editarExistente(btn) {
+                const cell = btn.closest('.cell');
+                const foto = cell.querySelector('.subsanacion-view img').src;
+                const texto = cell.querySelector('.texto-subsanado').innerText;
+                abrirEditor(cell, foto, texto);
+            }
+
+            function comprimirImagen(base64) {
+                return new Promise(res => {
+                    const img = new Image(); img.src = base64;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const MAX_WIDTH = 1200; // Calidad de sobra para la columna de subsanación
+                        canvas.width = MAX_WIDTH; 
+                        canvas.height = (MAX_WIDTH * img.height) / img.width;
+                        ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        res(canvas.toDataURL('image/jpeg', 0.9)); // Calidad 80%
+                    }
+                });
+            }
+
+            function descargarVersionEditable() {
+                const tituloCompleto = document.querySelector('.header-title').innerText;
+                const partes = tituloCompleto.split(' - ');
+                const partePrincipal = partes[0] + ' - ' + partes[1];
+                const hoy = new Date();
+                const fechaCorr = hoy.getFullYear() + String(hoy.getMonth() + 1).padStart(2, '0') + String(hoy.getDate()).padStart(2, '0');
+                
+                const contenido = '<!DOCTYPE html><html>' + document.documentElement.innerHTML + '</html>';
+                const blob = new Blob([contenido], { type: "text/html" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = \`\${partePrincipal} - Corregido \${fechaCorr}.html\`;
+                a.click();
+            }
+
+            window.onload = () => {
+                // Detectar si hay filas ya corregidas al cargar para poner el atributo data-corregida
+                document.querySelectorAll('.fila-desviacion').forEach(fila => {
+                    if(fila.querySelector('.subsanacion-view').style.display !== 'none') {
+                        fila.setAttribute('data-corregida', 'true');
+                    }
+                });
+                actualizarResumen();
+            };
+        </script>
+    </body></html>`;
+
+    const blob = new Blob([html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.html`;
+    a.click();
+}
+
+--- FILE: ./js/export-html.js ---
+// 1. COMPRESIÓN DE IMÁGENES
+// Busca esta función al principio del archivo js/export-html.js
+function comprimirBase64(base64Str, calidad = 0.7) { // Subimos calidad a 0.85
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const MAX_WIDTH = 640; // Antes 800, ahora 1600 para alta definición
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Generamos un JPEG de alta calidad
+            resolve(canvas.toDataURL('image/jpeg', calidad));
+        };
+        img.onerror = () => resolve(base64Str);
+    });
+}
+
+// 2. GENERACIÓN DEL INFORME
+async function generarHTML(desviaciones, seccionId) {
+    const fecha = new Date();
+    const codigoFecha = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+    const totalGlobal = desviaciones.length;
+    let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
+
+    const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
+    const grupos = {};
+    desviaciones.forEach(d => { if (!grupos[d.tipo]) grupos[d.tipo] = []; grupos[d.tipo].push(d); });
+    
+    let resumenHTML = "";
+    ORDEN_TIPOS.filter(t => grupos[t] && grupos[t].length > 0).forEach(t => {
+        const idLimpio = t.replace(/\s+/g, '_');
+        resumenHTML += `<li data-tipo="${t}"><strong>${t}:</strong> ${grupos[t].length} <span class="cont-corr" id="corr_${idLimpio}">(0 corregidas)</span></li>`;
+    });
+
+    let html = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Informe O&L - ${nombreSeccion}</title>
+        <style>
+            body { font-family: Segoe UI, Arial, sans-serif; margin: 40px; color: #333; padding-bottom: 100px; }
+            .header-title { font-size: 20px; font-weight: bold; border-bottom: 2px solid rgb(200, 230, 201); padding-bottom: 5px; margin-bottom: 10px; }
+            .resumen-box { background: rgb(245, 245, 245); padding: 15px; border-radius: 4px; margin-bottom: 25px; border: 1px solid #eee; }
+            .resumen-box h2 { font-size: 14px; margin-top: 0; color: #555; text-decoration: underline; margin-bottom: 8px; }
+            .resumen-list { display: grid; grid-template-columns: 1fr 1fr; list-style: none; padding: 0; font-size: 13px; margin: 0; }
+            .resumen-list li::before { content: "• "; color: #666; }
+            .cont-corr { color: #2e7d32; font-weight: bold; margin-left: 5px; }
+            .categoria-header { background: rgb(200, 230, 201); padding: 6px 12px; font-weight: bold; margin-top: 25px; border: 1px solid #ccc; border-bottom: none; font-size: 14px; }
+            .fila-desviacion { display: grid; grid-template-columns: 1fr 1fr; gap: 0; page-break-inside: avoid; }
+            .cell { border: 0.5px solid #ccc; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 150px; position: relative; }
+            .cell-subsanacion { background-color: #fafafa; }
+            .img-container img { max-width: 100%; max-height: 250px; border-radius: 2px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto;}
+            .info-row { font-size: 13px; margin-bottom: 4px; display: flex; }
+            .label { font-weight: bold; min-width: 100px; }
+            
+            /* BOTONES FLOTANTES */
+            .controls-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+            .btn-action { padding: 12px 20px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: none; color: white; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+            .btn-save { background: #2e7d32; }
+            .btn-filter { background: #1976d2; }
+            .btn-filter.active { background: #f57c00; box-shadow: inset 0 2px 5px rgba(0,0,0,0.4); }
+            
+            .btn-add { background: #1976d2; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+            .btn-edit { background: #ffa000; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; align-self: flex-end; }
+            textarea { width: 100%; border: 1px solid #ccc; font-family: inherit; font-size: 13px; margin-top: 5px; padding: 5px; box-sizing: border-box; resize: vertical; }
+            .texto-subsanado { font-size: 13px; margin-top: 5px; white-space: pre-wrap; }
+            .overlay-msg { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.6); color:white; padding:5px 10px; border-radius:4px; font-size:11px; pointer-events:none; }
+            
+            @media print { .no-print, .controls-container, .btn-edit, .btn-add, .overlay-msg, input { display: none !important; } }
+        </style>
+    </head>
+    <body>
+        <div class="header-title">${codigoFecha} - Informe de O&L de ${nombreSeccion.toUpperCase()} - ${totalGlobal} desviaciones</div>
+        <div class="resumen-box">
+            <h2>RESUMEN:</h2>
+            <ul class="resumen-list">${resumenHTML}</ul>
+        </div>
+
+        <div class="controls-container no-print">
+            <button class="btn-action btn-filter" id="btnFiltro" onclick="toggleFiltro()">🔍 VER SOLO PENDIENTES</button>
+            <button class="btn-action btn-save" onclick="descargarVersionEditable()">💾 GUARDAR CAMBIOS</button>
+        </div>
+
+        <div id="contenido-informe">`;
+
+    for (const t of ORDEN_TIPOS) {
+        if (!grupos[t] || grupos[t].length === 0) continue;
+        html += `<div class="categoria-header" data-tipo="${t}">${t.toUpperCase()} (${grupos[t].length})</div>`;
+        for (const d of grupos[t]) {
+            let fotoOriginal = d.foto ? await comprimirBase64(d.foto, 0.5) : "";
+            html += `
+            <div class="fila-desviacion" data-tipo="${t}" data-corregida="false">
+                <div class="cell">
+                    ${fotoOriginal ? `<div class="img-container"><img src="${fotoOriginal}"></div>` : ''}
+                    <div class="info-row"><span class="label">Ubicación:</span><span>${d.ubicacion || '—'}</span></div>
+                    <div class="info-row"><span class="label">Descripción:</span><span>${d.descripcion}</span></div>
+                </div>
+                <div class="cell cell-subsanacion">
+                    <div class="subsanacion-view" style="display:none;"></div>
+                    <div class="subsanacion-edit" style="display:none;">
+                        <div class="img-preview"></div>
+                        <div class="info-row"><span class="label">Acción:</span></div>
+                        <textarea rows="3" placeholder="Describe la corrección..."></textarea>
+                        <button class="btn-add" onclick="finalizarEdicion(this)" style="background:#2e7d32; margin-top:10px;">✅ ACEPTAR</button>
+                    </div>
+                    <div class="upload-zone" style="text-align:center; margin:auto;">
+                        <button class="btn-add" onclick="this.nextElementSibling.click()">➕ AÑADIR SUBSANACIÓN</button>
+                        <input type="file" accept="image/*" style="display:none;" onchange="procesarFoto(this)">
+                    </div>
+                </div>
+            </div>`;
+        }
+    }
+
+    html += `
+        </div>
+        <script>
+            let filtroActivo = false;
+
+            function actualizarResumen() {
+                const categorias = {};
+                document.querySelectorAll('.fila-desviacion').forEach(fila => {
+                    const tipo = fila.getAttribute('data-tipo');
+                    if (!categorias[tipo]) categorias[tipo] = { total: 0, corr: 0 };
+                    categorias[tipo].total++;
+                    if (fila.getAttribute('data-corregida') === 'true') {
+                        categorias[tipo].corr++;
+                    }
+                });
+
+                for (const [tipo, stats] of Object.entries(categorias)) {
+                    const idLimpio = "corr_" + tipo.replace(/\\s+/g, '_');
+                    const span = document.getElementById(idLimpio);
+                    if (span) {
+                        span.innerText = "(" + stats.corr + " corregidas)";
+                        span.style.color = (stats.corr === stats.total) ? "#2e7d32" : "#666";
+                    }
+                }
+                if(filtroActivo) aplicarFiltro();
+            }
+
+            function toggleFiltro() {
+                filtroActivo = !filtroActivo;
+                const btn = document.getElementById('btnFiltro');
+                btn.innerText = filtroActivo ? "👁️ VER TODO EL INFORME" : "🔍 VER SOLO PENDIENTES";
+                btn.classList.toggle('active', filtroActivo);
+                aplicarFiltro();
+            }
+
+            function aplicarFiltro() {
+                const categoriasIncompletas = new Set();
+                
+                // 1. Mostrar/Ocultar Filas
+                document.querySelectorAll('.fila-desviacion').forEach(fila => {
+                    const estaCorregida = fila.getAttribute('data-corregida') === 'true';
+                    if (filtroActivo && estaCorregida) {
+                        fila.style.display = 'none';
+                    } else {
+                        fila.style.display = 'grid';
+                        categoriasIncompletas.add(fila.getAttribute('data-tipo'));
+                    }
+                });
+
+                // 2. Mostrar/Ocultar Cabeceras de categoría
+                document.querySelectorAll('.categoria-header').forEach(header => {
+                    const tipo = header.getAttribute('data-tipo');
+                    header.style.display = (filtroActivo && !categoriasIncompletas.has(tipo)) ? 'none' : 'block';
+                });
+            }
+
+            async function procesarFoto(input) {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const cell = input.closest('.cell');
+                    const fotoComp = await comprimirImagen(e.target.result);
+                    abrirEditor(cell, fotoComp, "");
+                    input.value = "";
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function abrirEditor(cell, foto, texto) {
+                cell.querySelector('.upload-zone').style.display = 'none';
+                cell.querySelector('.subsanacion-view').style.display = 'none';
+                const editZone = cell.querySelector('.subsanacion-edit');
+                editZone.querySelector('.img-preview').innerHTML = \`
+                    <div class="img-container" style="cursor:pointer; position:relative;" onclick="this.closest('.cell').querySelector('input[type=file]').click()">
+                        <img src="\${foto}">
+                        <div class="overlay-msg">Click para cambiar imagen</div>
+                    </div>\`;
+                editZone.querySelector('textarea').value = texto;
+                editZone.style.display = 'block';
+            }
+
+            function finalizarEdicion(btn) {
+                const fila = btn.closest('.fila-desviacion');
+                const cell = btn.closest('.cell');
+                const foto = cell.querySelector('.img-preview img').src;
+                const texto = cell.querySelector('textarea').value;
+                const viewZone = cell.querySelector('.subsanacion-view');
+                
+                viewZone.innerHTML = \`
+                    <div class="img-container"><img src="\${foto}"></div>
+                    <div class="info-row" style="display:flex; align-items:center; justify-content: flex-start; gap: 4px;">
+                        <span class="label" style="width: auto; margin-right: 0;">Acción:</span>
+                        <button onclick="editarExistente(this)" title="Modificar" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; display:inline-flex; vertical-align:middle;">✏️</button>
+                    </div>
+                    <div class="texto-subsanado">\${texto}</div>\`;
+                
+                cell.querySelector('.subsanacion-edit').style.display = 'none';
+                viewZone.style.display = 'block';
+                fila.setAttribute('data-corregida', 'true');
+                actualizarResumen();
+            }
+
+            function editarExistente(btn) {
+                const cell = btn.closest('.cell');
+                const foto = cell.querySelector('.subsanacion-view img').src;
+                const texto = cell.querySelector('.texto-subsanado').innerText;
+                abrirEditor(cell, foto, texto);
+            }
+
+            function comprimirImagen(base64) {
+                return new Promise(res => {
+                    const img = new Image(); img.src = base64;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const MAX_WIDTH = 640; // Calidad de sobra para la columna de subsanación
+                        canvas.width = MAX_WIDTH; 
+                        canvas.height = (MAX_WIDTH * img.height) / img.width;
+                        ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        res(canvas.toDataURL('image/jpeg', 0.6)); // Calidad 70%
+                    }
+                });
+            }
+
+            function descargarVersionEditable() {
+                const tituloCompleto = document.querySelector('.header-title').innerText;
+                const partes = tituloCompleto.split(' - ');
+                const partePrincipal = partes[0] + ' - ' + partes[1];
+                const hoy = new Date();
+                const fechaCorr = hoy.getFullYear() + String(hoy.getMonth() + 1).padStart(2, '0') + String(hoy.getDate()).padStart(2, '0');
+                
+                const contenido = '<!DOCTYPE html><html>' + document.documentElement.innerHTML + '</html>';
+                const blob = new Blob([contenido], { type: "text/html" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = \`\${partePrincipal} - Corregido \${fechaCorr}.html\`;
+                a.click();
+            }
+
+            window.onload = () => {
+                // Detectar si hay filas ya corregidas al cargar para poner el atributo data-corregida
+                document.querySelectorAll('.fila-desviacion').forEach(fila => {
+                    if(fila.querySelector('.subsanacion-view').style.display !== 'none') {
+                        fila.setAttribute('data-corregida', 'true');
+                    }
+                });
+                actualizarResumen();
+            };
+        </script>
+    </body></html>`;
+
+    const blob = new Blob([html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.html`;
+    a.click();
+}
+
+--- FILE: ./README.md ---
+# 📋 Sistema de Informe de Desviaciones O&L
+
+Una aplicación web ligera y funcional diseñada para la captura de desviaciones en campo, generación de informes técnicos en HTML para responsables y exportación final en PDF. 
+
+Optimizada para uso en dispositivos móviles con captura directa de cámara y gestión de versiones para evitar problemas de caché.
+
+## ✨ Características principalas
+
+-   **Captura en movilidad**: Interfaz responsive optimizada para smartphones.
+-   **Gestión de imágenes**: Compresión automática de fotos para equilibrar calidad y peso del archivo.
+-   **Persistencia local**: Los datos no se pierden al cerrar el navegador (uso de LocalStorage).
+-   **Exportación dual**:
+    -   **HTML**: Formato interactivo para que los responsables marquen subsanaciones.
+    -   **PDF**: Formato cerrado y profesional para archivo final.
+-   **Carga inteligente**: Sistema de *Cache Busting* que asegura que el móvil siempre cargue la última versión del código.
+
+## 🚀 Instalación y Uso Local
+
+Para probar o desarrollar la aplicación en tu ordenador, es necesario ejecutarla a través de un servidor local debido a las políticas de seguridad de los navegadores (CORS) al cargar módulos de JavaScript.
+
+### Lanzar servidor con Python
+
+Si tienes Python instalado (Windows, Mac o Linux), sigue estos pasos:
+
+1.  Abre una terminal o CMD.
+2.  Navega hasta la carpeta del proyecto:
+    ```bash
+    cd ruta/de/tu/proyecto
+    ```
+3.  Ejecuta el servidor:
+    -   **Python 3.x:**
+        ```bash
+        python3 -m http.server 8000
+        ```
+4.  Abre tu navegador y entra en: `http://localhost:8000`
+
+## 📁 Estructura del Proyecto
+
+```text
+├── index.html          # Interfaz principal y lógica de la App
+├── css/
+│   └── style.css       # Estilos y diseño responsive
+├── js/
+│   ├── export-html.js  # Lógica de generación de informe HTML
+│   └── export-pdf.js   # Lógica de generación de PDF (jsPDF)
+└── README.md           # Documentación
+```
+
+## 🛠️ Tecnologías utilizadas
+HTML5 / CSS3: Diseño mediante Flexbox y Media Queries.
+
+JavaScript (Vanilla): Lógica pura sin dependencias pesadas.
+
+jsPDF: Librería para la generación de documentos PDF en el cliente.
+
+GitHub Pages: Recomendado para el despliegue rápido.
+
+## 📱 Notas para el uso en móvil
+Para garantizar que los cambios de estilo o lógica se apliquen en el dispositivo móvil inmediatamente después de un despliegue en GitHub:
+
+La aplicación utiliza un sistema automático que añade un timestamp (?v=YYYYMMDDHHMMSS) a los archivos JS y CSS.
+
+Simplemente refresca la página en el navegador del móvil para forzar la descarga de la nueva versión.
+
+--- FILE: ./css/style (copia 1).css ---
+/* css/style.css */
+body { 
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
+    background: #f5f5f5; 
+    margin: 0; 
+    padding: 1rem; 
+}
+.app { max-width: 900px; margin: auto; }
+.card { background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.1); margin-bottom: 1rem;}
+
+input, select, textarea { 
+    width:100%; padding:.5rem; margin-bottom:.7rem; border-radius:8px; border:1px solid #ccc; box-sizing:border-box; 
+}
+
+button { padding:.6rem 1rem; border:none; border-radius:8px; cursor:pointer; margin-right:.5rem; margin-bottom:.5rem; }
+.btn-primary { background:#1976d2; color:white;}
+.btn-secondary { background:#e0e0e0;}
+.btn-danger { background:#d32f2f; color:white;}
+.btn-small { padding: 4px 8px; font-size: 12px; margin: 2px; }
+
+/* Lista de desviaciones */
+.desv-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    gap: 10px;
+}
+
+/* Contenedor Izquierdo (Foto + Texto) */
+.desv-item > div:first-child {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0; 
+}
+
+.info-text-wrap {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.thumb {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+/* Contenedor Derecho (Botones) */
+.desv-item > div:last-child {
+    display: flex;
+    flex-direction: column; /* Apilados en móvil para ganar ancho de texto */
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+/* En PC o pantallas anchas, botones uno al lado del otro */
+@media (min-width: 600px) {
+    .desv-item > div:last-child {
+        flex-direction: row;
+    }
+}
+
+--- FILE: ./css/style.css ---
+/* ==========================================================================
+   ESTILOS GENERALES Y RESET
+   ========================================================================== */
+body { 
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
+    background: #f5f5f5; 
+    margin: 0; 
+    padding: 1rem; 
+    color: #333;
+}
+
+/* Contenedor principal de la aplicación */
+.app { 
+    max-width: 900px; 
+    margin: auto; 
+}
+
+/* Tarjetas blancas para agrupar contenido */
+.card { 
+    background: white; 
+    padding: 1rem; 
+    border-radius: 12px; 
+    box-shadow: 0 2px 6px rgba(0,0,0,.1); 
+    margin-bottom: 1rem;
+}
+
+/* ==========================================================================
+   FORMULARIOS E INPUTS
+   ========================================================================== */
+input, select, textarea { 
+    width: 100%; 
+    padding: .5rem; 
+    margin-bottom: .7rem; 
+    border-radius: 8px; 
+    border: 1px solid #ccc; 
+    box-sizing: border-box; /* Asegura que el padding no afecte al ancho total */
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   BOTONES
+   ========================================================================== */
+button { 
+    padding: .6rem 1rem; 
+    border: none; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    margin-right: .5rem; 
+    margin-bottom: .5rem; 
+    transition: opacity 0.2s;
+}
+
+button:active { opacity: 0.7; }
+
+.btn-primary { background: #1976d2; color: white; }
+.btn-secondary { background: #e0e0e0; color: #333; }
+.btn-danger { background: #d32f2f; color: white; }
+
+/* Botones pequeños para la lista de desviaciones */
+.btn-small { 
+    padding: 4px 8px; 
+    font-size: 12px; 
+    margin: 2px; 
+}
+
+/* ==========================================================================
+   LISTA DE DESVIACIONES (ITEMS)
+   ========================================================================== */
+
+/* Contenedor de cada fila (FLEXBOX) */
+.desv-item {
+    display: flex;
+    justify-content: space-between; /* Empuja texto a la izq y botones a la der */
+    align-items: center;           /* Centrado vertical */
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    gap: 10px;                     /* Espacio mínimo de seguridad entre elementos */
+}
+
+/* Contenedor Izquierdo: Agrupa Foto + Texto */
+.desv-item > div:first-child {
+    display: flex;
+    align-items: center;
+    flex: 1;                       /* Toma todo el espacio sobrante */
+    min-width: 0;                  /* Permite que el texto se encoja en móviles */
+}
+
+/* Miniatura de la foto en la lista */
+.thumb {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-right: 12px;
+    flex-shrink: 0;                /* Evita que la foto se aplaste */
+}
+
+/* Ajuste del texto de la desviación */
+.info-text-wrap {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;        /* Rompe palabras largas si es necesario */
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Contenedor Derecho: Grupo de botones (Editar/Borrar) */
+.desv-item > div:last-child {
+    display: flex;
+    flex-direction: column;        /* Por defecto: uno sobre otro (Móvil) */
+    gap: 5px;
+    flex-shrink: 0;                /* Los botones nunca se encogen */
+}
+
+/* ==========================================================================
+   DISEÑO RESPONSIVE (MEDIA QUERIES)
+   ========================================================================== */
+
+/* Cuando la pantalla es ancha (PC / Tablet horizontal) */
+@media (min-width: 600px) {
+    .desv-item > div:last-child {
+        flex-direction: row;       /* Los botones se ponen uno al lado del otro */
+    }
+    
+    body {
+        padding: 2rem;
+    }
+}

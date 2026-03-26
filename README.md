@@ -4,15 +4,18 @@ Una aplicación web ligera y funcional diseñada para la captura de desviaciones
 
 Optimizada para uso en dispositivos móviles con captura directa de cámara y gestión de versiones para evitar problemas de caché.
 
-## ✨ Características principalas
+## ✨ Características principales
 
--   **Captura en movilidad**: Interfaz responsive optimizada para smartphones.
--   **Gestión de imágenes**: Compresión automática de fotos para equilibrar calidad y peso del archivo.
--   **Persistencia local**: Los datos no se pierden al cerrar el navegador (uso de LocalStorage).
--   **Exportación dual**:
-    -   **HTML**: Formato interactivo para que los responsables marquen subsanaciones.
-    -   **PDF**: Formato cerrado y profesional para archivo final.
--   **Carga inteligente**: Sistema de *Cache Busting* que asegura que el móvil siempre cargue la última versión del código.
+- 📱 **Captura en movilidad**: Interfaz *responsive* optimizada para smartphones y tablets.
+- 🗂️ **Gestión por Secciones**: Organización de hallazgos por áreas (ej. Almacén, Taller, Oficinas) con capacidad de crear y renombrar secciones al vuelo.
+- 📸 **Optimización de Imágenes**: Redimensionamiento automático (800px) y compresión (calidad 0.6) mediante Canvas API para generar PDFs ligeros.
+- 💾 **Persistencia Local**: Los datos se guardan automáticamente en el navegador (`LocalStorage`), permitiendo continuar el trabajo más tarde.
+- 📊 **Monitor de Almacenamiento**: Barra de progreso en tiempo real para controlar el uso de la cuota de memoria (5MB) del navegador.
+- 📄 **Exportación Dual**:
+    - **HTML**: Formato interactivo ideal para que los responsables marquen las subsanaciones.
+    - **PDF**: Documento profesional y cerrado generado en el cliente mediante jsPDF.
+- ⚡ **Carga Inteligente**: Sistema de *Cache Busting* que garantiza que el dispositivo siempre ejecute la última versión del código.
+- 🔒 **Privacidad Total**: Diseño *offline-first*. Los datos y fotografías nunca se suben a servidores externos; la privacidad es absoluta.
 
 ## 🚀 Instalación y Uso Local
 
@@ -37,13 +40,14 @@ Si tienes Python instalado (Windows, Mac o Linux), sigue estos pasos:
 ## 📁 Estructura del Proyecto
 
 ```text
-├── index.html          # Interfaz principal y lógica de la App
+├── index.html          # Interfaz principal
+├── ai.sh               # Script de contexto para IA
+├── ai_context.txt      # Archivo generado para la IA (ignorar en git)
 ├── css/
-│   └── style.css       # Estilos y diseño responsive
-├── js/
-│   ├── export-html.js  # Lógica de generación de informe HTML
-│   └── export-pdf.js   # Lógica de generación de PDF (jsPDF)
-└── README.md           # Documentación
+│   └── style.css       # Estilos responsive
+└── js/
+    ├── export-html.js  # Generador de informes HTML
+    └── export-pdf.js   # Generador de informes PDF (jsPDF)
 ```
 
 ## 🛠️ Tecnologías utilizadas
@@ -61,3 +65,12 @@ Para garantizar que los cambios de estilo o lógica se apliquen en el dispositiv
 La aplicación utiliza un sistema automático que añade un timestamp (?v=YYYYMMDDHHMMSS) a los archivos JS y CSS.
 
 Simplemente refresca la página en el navegador del móvil para forzar la descarga de la nueva versión.
+
+## 🤖 Desarrollo asistido por IA
+Este repositorio incluye un script para facilitar el mantenimiento mediante modelos de lenguaje (LLMs):
+
+ai.sh: Ejecuta este script en Linux para generar un archivo ai_context.txt que contiene toda la estructura y código del proyecto listo para ser procesado por una IA.
+
+``` sh
+./ai.sh
+```
