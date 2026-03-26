@@ -152,7 +152,7 @@ async function generarPDF(desviaciones, seccionId) {
             doc.setFont(undefined, "bold");
             doc.text("Ubicación:", margin + 2, curY);
             doc.setFont(undefined, "normal");
-            doc.text(ubiLines, margin + contentStartX-5, curY);
+            doc.text(ubiLines, margin + contentStartX-2, curY);
             
             curY += (ubiLines.length * lineH) + gapBetweenFields; 
 
@@ -160,7 +160,7 @@ async function generarPDF(desviaciones, seccionId) {
             doc.setFont(undefined, "bold");
             doc.text("Descripción:", margin + 2, curY);
             doc.setFont(undefined, "normal");
-            doc.text(descLines, margin + contentStartX+5, curY);
+            doc.text(descLines, margin + contentStartX+2, curY);
 
             y += cellH; 
         }
