@@ -118,7 +118,7 @@ async function generarPDF(desviaciones, seccionId) {
             doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
             const spaceForText = colW - contentStartX - 2;
             const ubiLines = doc.splitTextToSize(String(d.ubicacion || ""), spaceForText);
-            const descLines = doc.splitTextToSize(String(d.descripcion || ""), spaceForText);
+            const descLines = doc.splitTextToSize(String(d.descripcion || ""), spaceForText-12);
             
             // --- AJUSTES DE ESPACIADO ---
             const lineH = PDF_CONFIG.TAMANO_TEXTO * 0.42; 
@@ -158,7 +158,7 @@ async function generarPDF(desviaciones, seccionId) {
 
             // Descripción
             doc.setFont(undefined, "bold");
-            doc.text("Descripción:", margin + 2, curY);
+            doc.text("Descripción:", margin + 12, curY);
             doc.setFont(undefined, "normal");
             doc.text(descLines, margin + contentStartX, curY);
 
