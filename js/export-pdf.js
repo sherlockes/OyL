@@ -33,29 +33,85 @@ function achicarParaPDF(base64) {
     });
 }
 
-async function generarPDF(desviaciones, seccionId) {
+async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ compress: PDF_CONFIG.COMPRESION_PDF, unit: 'mm', format: 'a4' });
+    const doc = new jsPDF({ compress: true, unit: 'mm', format: 'a4' });
     
-    const margin = PDF_CONFIG.MARGEN; 
-    const pageWidth = 210 - (margin * 2); 
-    const ph = doc.internal.pageSize.getHeight();
-    let y = margin + 10; 
+    // --- 0. DEFINICIÓN DE VARIABLES GLOBALES DE PÁGINA ---
+    const pw = doc.internal.pageSize.getWidth();  // Ancho total (210mm)
+    const ph = doc.internal.pageSize.getHeight(); // Alto total (297mm)
+    const margin = 15;
+    const verdeCorporativo = [0, 121, 52]; // #007934
+    let y = 40;
 
-    // --- FECHA Y TÍTULO ---
+    // --- 1. PÁGINA 1: PORTADA ---
+    
+    // Línea 1: H1 - Título principal
+    doc.setTextColor(...verdeCorporativo);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(28);
+    doc.text("AUDITORIA DE ORDEN Y LIMPIEZA", margin, y);
+    y += 30;
+
+    // Línea 2: H3 - Sección y Fecha
+    doc.setFontSize(20);
+    doc.text(seccionId.toUpperCase(), margin, y); 
+    doc.text(fechaManual, pw - margin, y, { align: "right" }); 
+    y += 20;
+
+    // Línea 3: H2 - Desviaciones y Resultado (con fondo verde)
+    const altoCuadro = 30;
+    const fontSize = 24; // Definimos la fuente para usarla en el cálculo
+
+    doc.setFillColor(...verdeCorporativo);
+    doc.rect(0, y, pw, altoCuadro, 'F'); 
+
+    doc.setTextColor(255, 255, 255); 
+    doc.setFontSize(fontSize);
+
+    // CÁLCULO DEL CENTRO VERTICAL:
+    // y: posición actual del tope del cuadro
+    // altoCuadro / 2: nos lleva al centro matemático (15mm)
+    // + 3.5: es el ajuste para que el "cuerpo" de la letra de 24pt quede centrado respecto a la línea de base
+    const posicionVerticalTexto = y + (altoCuadro / 2) + 3.5;
+
+    doc.text(`DESVIACIONES: ${desviaciones.length}`, margin, posicionVerticalTexto);
+    doc.text(`RESULTADO: ${notaManual}`, pw - margin, posicionVerticalTexto, { align: "right" });
+
+    y += altoCuadro;
+
+    // Línea 4: Imagen portada.jpg
+    try {
+        const imgPortada = await cargarImagen('portada.jpg');
+        const altoPortada = 100;
+        doc.addImage(imgPortada, 'JPEG', 0, y, pw, altoPortada); 
+        y += altoPortada;
+    } catch (e) {
+        console.warn("No se pudo cargar portada.jpg", e);
+        y += 20; 
+    }
+
+    // Línea 5: Imagen logo.jpg
+    y += 20; 
+    try {
+        const imgLogo = await cargarImagen('logo.jpg');
+        const logoW = 60; 
+        const logoH = 25; 
+        doc.addImage(imgLogo, 'JPEG', (pw / 2) - (logoW / 2), y, logoW, logoH);
+    } catch (e) {
+        console.warn("No se pudo cargar logo.jpg", e);
+    }
+
+    // --- 2. PASO AL CONTENIDO ---
+    doc.addPage();
+    y = 20; 
+    doc.setTextColor(0, 0, 0); 
+
+    // --- FECHA Y TÍTULO EN PÁGINA 2 ---
     const fecha = new Date();
     const codigoFecha = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
     const totalGlobal = desviaciones.length;
     let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(PDF_CONFIG.TAMANO_TITULO);
-    doc.text(`${codigoFecha} - Informe de O&L de ${nombreSeccion.toUpperCase()} - ${totalGlobal} desviaciones`, margin, y);
-    
-    doc.setDrawColor(...PDF_CONFIG.COLOR_TITULO); 
-    doc.setLineWidth(0.5);
-    doc.line(margin, y + 2, margin + pageWidth, y + 2);
-    y += 10;
 
     // --- GRUPOS Y RESUMEN ---
     const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
@@ -63,10 +119,10 @@ async function generarPDF(desviaciones, seccionId) {
     desviaciones.forEach(d => { if (!grupos[d.tipo]) grupos[d.tipo] = []; grupos[d.tipo].push(d); });
 
     const tiposConDatos = ORDEN_TIPOS.filter(t => grupos[t] && grupos[t].length > 0);
-    const alturaCuadro = (Math.ceil(tiposConDatos.length / 2) * 6) + 8; 
+    const alturaCuadroResumen = (Math.ceil(tiposConDatos.length / 2) * 6) + 8; 
 
     doc.setFillColor(...PDF_CONFIG.COLOR_RESUMEN);
-    doc.rect(margin, y, pageWidth, alturaCuadro, 'F');
+    doc.rect(margin, y, pw - (margin * 2), alturaCuadroResumen, 'F');
     doc.setFontSize(PDF_CONFIG.TAMANO_RESUMEN);
     doc.text("RESUMEN:", margin + 2, y + 5);
     
@@ -74,22 +130,21 @@ async function generarPDF(desviaciones, seccionId) {
     let colStep = 0;
     doc.setFont("helvetica", "normal");
     tiposConDatos.forEach((t) => {
-        const posX = colStep % 2 === 0 ? margin + 5 : margin + (pageWidth / 2) + 5;
+        const posX = colStep % 2 === 0 ? margin + 5 : margin + (pw / 2);
         doc.text(`• ${t}: ${grupos[t].length}`, posX, resY);
         if (colStep % 2 !== 0) resY += 6;
         colStep++;
     });
 
-    y = y + alturaCuadro + 10; 
+    y = y + alturaCuadroResumen + 10; 
 
-    const colW = pageWidth / 2;
-    const contentStartX = 24; 
+    const colW = (pw - (margin * 2)) / 2; 
 
     const dims = (base) => new Promise(ok => {
         if(!base) return ok({W:0, H:0});
         let img = new Image();
         img.onload = () => {
-            let maxW = colW - 4; 
+            let maxW = colW - 2; 
             let r = img.width / img.height;
             let W = maxW, H = maxW / r;
             if (H > 70) { H = 70; W = H * r; }
@@ -102,69 +157,112 @@ async function generarPDF(desviaciones, seccionId) {
     for (const t of ORDEN_TIPOS) {
         if (!grupos[t] || grupos[t].length === 0) continue;
 
-        if (y + 15 > ph - margin) { doc.addPage(); y = margin + 5; }
+        if (y + 20 > ph - margin) { doc.addPage(); y = margin + 5; }
         
         doc.setFont("helvetica", "bold");
         doc.setFontSize(PDF_CONFIG.TAMANO_ENCABEZADO);
-        doc.setFillColor(...PDF_CONFIG.COLOR_TITULO); 
-        doc.rect(margin, y, pageWidth, 6, 'F');
-        doc.text(`${t.toUpperCase()} (${grupos[t].length})`, margin + 2, y + 4.2);
-        y += 7; 
+        //doc.setFillColor(...PDF_CONFIG.COLOR_TITULO);
+	doc.setFillColor(0, 121, 52);
+        doc.rect(margin, y, pw - (margin * 2), 7, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.text(`${t.toUpperCase()} (${grupos[t].length})`, margin + 2, y + 5);
+        doc.setTextColor(0, 0, 0);
+        y += 8; 
 
         for (const d of grupos[t]) {
+            // 1. DIMENSIONES Y AJUSTES INICIALES
             let W = 0, H = 0;
-            if (d.foto) { const dimg = await dims(d.foto); W = dimg.W; H = dimg.H; }
-
-            doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
-            const spaceForText = colW - contentStartX - 2;
-            const ubiLines = doc.splitTextToSize(String(d.ubicacion || ""), spaceForText);
-            const descLines = doc.splitTextToSize(String(d.descripcion || ""), spaceForText);
-            
-            // --- AJUSTES DE ESPACIADO ---
-            const lineH = PDF_CONFIG.TAMANO_TEXTO * 0.42; 
-            const paddingAfterFoto = 4;   // Hueco recuperado entre foto y texto
-            const gapBetweenFields = 1.2; // Espacio mínimo entre líneas
-            const paddingBottom = 1;      // Espacio mínimo al final de la celda
-            
-            // Calculamos altura total sumando solo lo estrictamente necesario
-            const textSectionH = (ubiLines.length * lineH) + (descLines.length * lineH) + gapBetweenFields; 
-            let cellH = 2 + (H > 0 ? H + paddingAfterFoto : 0) + textSectionH + paddingBottom;
-
-            if (y + cellH > ph - margin) { doc.addPage(); y = margin + 5; }
-
-            doc.setDrawColor(200);
-            doc.rect(margin, y, colW, cellH);
-            doc.rect(margin + colW, y, colW, cellH);
-
-            let curY = y + 2;
-
-            if (H > 0 && d.foto) {
-                const fotoMini = await achicarParaPDF(d.foto);
-                //doc.addImage(d.foto, PDF_CONFIG.FORMATO_IMG, margin + (colW - W) / 2, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
-                doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, margin + (colW - W) / 2, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
-                curY += H + paddingAfterFoto; // Aplicamos el hueco aquí
+            if (d.foto) { 
+                const dimg = await dims(d.foto); 
+                W = dimg.W; 
+                H = dimg.H; 
             }
 
-            // --- TEXTOS ---
-            doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
+            const colW = (pw - (margin * 2)) / 2; // Ancho de la celda
+            const internalPadding = 1;            // Margen superior/inferior reducido
+            const labelWidth = 22;               // Espacio para "Ubicación:"
             
+            // --- AQUÍ ESTABA EL ERROR: Definimos spaceForValue ---
+            const spaceForValue = colW - labelWidth - (internalPadding * 2);
+            
+            const lineH = PDF_CONFIG.TAMANO_TEXTO * 0.45; 
+            const gapSutil = 1; // Espacio entre bloques de texto
+
+            // 2. CÁLCULO DE LÍNEAS Y ALTURAS DE TEXTO
+            const ubiLines = doc.splitTextToSize(String(d.ubicacion || ""), spaceForValue);
+            const descLines = doc.splitTextToSize(String(d.descripcion || ""), spaceForValue);
+            
+            const ubiH = ubiLines.length * lineH;
+            const descH = descLines.length * lineH;
+
+            // 3. CÁLCULO DE ALTURA DE CELDA (MÁS AJUSTADO)
+            let cellH = (internalPadding * 2); 
+            if (H > 0) {
+                cellH += H + 2; // Foto + pequeño margen
+            }
+            cellH += ubiH + gapSutil + descH; 
+
+            // 4. SALTO DE PÁGINA SI NO CABE
+            if (y + cellH > ph - margin) { 
+                doc.addPage(); 
+                y = margin + 5; 
+            }
+
+            // 5. DIBUJAR RECUADROS
+            doc.setDrawColor(200);
+            doc.rect(margin, y, colW, cellH);        // Celda izquierda (con datos)
+            doc.rect(margin + colW, y, colW, cellH); // Celda derecha (vacía)
+
+            let curY = y + internalPadding;
+
+            // 6. INSERTAR FOTO
+            if (d.foto && H > 0) {
+                const fotoMini = await achicarParaPDF(d.foto);
+                const centroX = margin + (colW - W) / 2;
+                doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, centroX, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
+                curY += H + 5;
+            }
+
+            // 7. INSERTAR TEXTOS
+            doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
+
             // Ubicación
             doc.setFont(undefined, "bold");
-            doc.text("Ubicación:", margin + 2, curY);
+            doc.text("Ubicación:", margin + internalPadding, curY);
             doc.setFont(undefined, "normal");
-            doc.text(ubiLines, margin + contentStartX-2, curY);
+            doc.text(ubiLines, margin + internalPadding + labelWidth - 2, curY);
             
-            curY += (ubiLines.length * lineH) + gapBetweenFields; 
+            curY += ubiH + gapSutil;
 
             // Descripción
             doc.setFont(undefined, "bold");
-            doc.text("Descripción:", margin + 2, curY);
+            doc.text("Descripción:", margin + internalPadding, curY);
             doc.setFont(undefined, "normal");
-            doc.text(descLines, margin + contentStartX+2, curY);
+            doc.text(descLines, margin + internalPadding + labelWidth + 2, curY);
 
+            // Avanzar posición Y para la siguiente fila
             y += cellH; 
         }
-        y += 6; 
+        y += 5; 
     }
+
+    // --- FINALIZACIÓN ---
     doc.save(`${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.pdf`);
+}
+
+// Función auxiliar para cargar imágenes locales como Base64 (necesaria para jsPDF)
+function cargarImagen(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/jpeg"));
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
 }

@@ -353,22 +353,30 @@ $("btnCancelarEdicion").onclick=()=>{
 };
 
 // Nueva sección
-$("btnNuevaSeccion").onclick=()=>{
-  let nombre = prompt("Nombre de la nueva sección (usa letras, números y guiones bajos \"_\"):");
-  if(!nombre) return;
+$("btnNuevaSeccion").onclick = () => {
+  // 1. Actualizamos el mensaje de ayuda
+  let nombre = prompt("Nombre de la nueva sección (puedes usar espacios y tildes):");
+  if (!nombre) return;
+  
   nombre = nombre.trim();
-  if(!nombre) return;
-  nombre = nombre.replace(/\s+/g, "_");
-  nombre = nombre.replace(/[^A-Za-z0-9_]/g, "");
-  if(!nombre){
+  if (!nombre) return;
+
+     // 2. Eliminamos las líneas que quitaban espacios y caracteres especiales
+     // Solo eliminamos caracteres que podrían dar problemas en nombres de archivos al exportar
+     // ( \ / : * ? " < > | )
+     nombre = nombre.replace(/[\\/:*?"<>|]/g, "");
+
+  if (!nombre) {
     alert("Nombre no válido.");
     return;
   }
+
   let secciones = cargarSecciones();
-  if(secciones.includes(nombre)){
+  if (secciones.includes(nombre)) {
     alert("Ya existe una sección con ese nombre.");
     return;
   }
+
   secciones.push(nombre);
   guardarSecciones(secciones);
   setSeccionActualId(nombre);
@@ -397,7 +405,9 @@ $("btnConfirmarRenombrar").onclick = () => {
     let nuevo = $("inputNuevoNombre").value;
 
     if (!nuevo) return;
-    nuevo = nuevo.trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]/g, "");
+
+    // Aplicamos la misma lógica permisiva que en la creación
+    nuevo = nuevo.trim().replace(/[\\/:*?"<>|]/g, "");
 
     if (!nuevo || nuevo === actual) {
         $("btnCancelarRenombrar").click();
@@ -410,24 +420,23 @@ $("btnConfirmarRenombrar").onclick = () => {
         return;
     }
 
-    // Mover datos
+    // El resto del código de mover datos y actualizar secciones se mantiene igual...
     const datos = localStorage.getItem(DATA_PREFIX + actual);
     if (datos !== null) {
         localStorage.setItem(DATA_PREFIX + nuevo, datos);
         localStorage.removeItem(DATA_PREFIX + actual);
     }
 
-    // Actualizar lista de secciones
     secciones = secciones.map(id => id === actual ? nuevo : id);
     guardarSecciones(secciones);
     setSeccionActualId(nuevo);
 
-    // En lugar de alert, recargamos directamente para limpiar Vivaldi
     window.location.reload();
-};
-// Cambio de sección
-$("seccionSelect").addEventListener("change",()=>{
-  const id = $("seccionSelect").value;
+ };
+
+ // Cambio de sección
+ $("seccionSelect").addEventListener("change",()=>{
+     const id = $("seccionSelect").value;
   setSeccionActualId(id);
   cargarDatosSeccion(id);
 });
@@ -437,7 +446,7 @@ $("btnBorrarSeccion").onclick=()=>{
   const secciones = cargarSecciones();
   const actual = getSeccionActualId();
   if(!confirm("¿Borrar la sección \""+actual+"\" y todas sus desviaciones?")) return;
-  localStorage.removeItem(DATA_PREFIX + actual);
+	 localStorage.removeItem(DATA_PREFIX + actual);
   const nuevas = secciones.filter(s=>s!==actual);
   if(nuevas.length === 0){
     nuevas.push("seccion_1");
@@ -496,31 +505,42 @@ $("btnDescargarHTML").onclick = () => {
 
 // Exportar PDF
 $("btnDescargarPDF").onclick = async () => {
-    // 1. Verificación básica
     if (desviaciones.length === 0) {
         alert("No hay datos para exportar");
         return;
     }
 
-    // --- NUEVO: Capturar el valor del desplegable ---
-    // Usamos el ID del select que mencionaste: 'seccionSelect'
-    const combo = document.getElementById("seccionSelect");
+    // Solicitamos los datos para la portada
+    // Configuramos el formato: mes largo y año numérico
+     const opciones = { month: 'long', year: 'numeric' };
+     let fechaPorDefecto = new Date().toLocaleDateString('es-ES', opciones);
+
+     // La salida estándar es "marzo de 2026", vamos a poner la primera en mayúscula
+     // y quitar el " de " si prefieres el formato exacto "Marzo 2026"
+     fechaPorDefecto = fechaPorDefecto.charAt(0).toUpperCase() + fechaPorDefecto.slice(1);
+     fechaPorDefecto = fechaPorDefecto.replace(" de ", " ");
+
+     const fechaManual = prompt("Introduce la fecha para el informe (ej: Abril 2026):", fechaPorDefecto);
+
+     const notaManual = prompt("Introduce el resultado de la auditoría (ej: 85):");
+     if (notaManual === null) return; // Cancelado
+
+     const combo = document.getElementById("seccionSelect");
     const nombreSeccion = combo.options[combo.selectedIndex].text; 
 
-    // 2. Llamada al módulo externo
     try {
-        // PASAMOS 'nombreSeccion' en lugar del texto fijo entre comillas
-        await generarPDF(desviaciones, nombreSeccion);
+        // Pasamos los nuevos datos a la función generarPDF
+        await generarPDF(desviaciones, nombreSeccion, fechaManual, notaManual);
     } catch (error) {
         console.error("Error en la exportación:", error);
         alert("Error al generar el PDF. Revisa la consola.");
     }
-};
+ };
 
 
-// Control de versiones y carga automática de CSS y JS
-(function() {
-  const ahora = new Date();
+ // Control de versiones y carga automática de CSS y JS
+ (function() {
+     const ahora = new Date();
   const v = ahora.getFullYear() + 
             ("0" + (ahora.getMonth() + 1)).slice(-2) + 
             ("0" + ahora.getDate()).slice(-2) + 
