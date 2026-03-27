@@ -6,6 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧹</text></svg>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 
 <body>
@@ -79,6 +81,7 @@
     <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
         <button class="btn-primary" id="btnDescargarHTML"" style="flex:1;">🌐 HTML</button>
         <button class="btn-primary" id="btnDescargarPDF" style="flex:1;">📕 PDF</button>
+	<button class="btn-primary" id="btnDescargarDOCX" style="flex:1;">📝 DOCX</button>
     </div>
 </div>
 
@@ -619,16 +622,47 @@ $("btnConfirmarRenombrar").onclick = () => {
      }
  };
 
+// Exportar DOCX - ESTRATEGIA PDF CORREGIDA
+$("btnDescargarDOCX").onclick = () => {
+    const actual = getSeccionActualId();
+    if (!actual) return alert("No hay sección seleccionada");
+
+    const nombreSeccion = actual.replace(/_/g, " ");
+    const datosRaw = localStorage.getItem(DATA_PREFIX + actual);
+    const datos = datosRaw ? JSON.parse(datosRaw) : [];
+
+    if (datos.length === 0) return alert("No hay datos en esta sección");
+
+    // Generamos la fecha por defecto de forma segura
+    const ahora = new Date();
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const fechaSugerida = `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+
+    // --- PREGUNTAS AL USUARIO ---
+    const fechaManual = prompt("Introduce la fecha para el informe:", fechaSugerida) || fechaSugerida;
+    const notaManual = prompt("Introduce el resultado (ej: 85) o una nota general:", "") || "";
+
+    const resumen = {};
+    datos.forEach(d => { resumen[d.tipo] = (resumen[d.tipo] || 0) + 1; });
+
+    // Código de fecha seguro para el nombre del archivo (YYYYMMDD)
+    const isoDate = ahora.toISOString();
+    const codigoFecha = isoDate ? isoDate.slice(0, 10).replace(/-/g, '') : "20260101";
+
+    // Llamada con las 6 variables
+    exportarAWord(nombreSeccion, datos, resumen, fechaManual, notaManual, codigoFecha);
+ };
+
 
  // Control de versiones y carga automática de CSS y JS
  (function() {
      const ahora = new Date();
      const v = ahora.getFullYear() + 
-             ("0" + (ahora.getMonth() + 1)).slice(-2) + 
-             ("0" + ahora.getDate()).slice(-2) + 
-             ("0" + ahora.getHours()).slice(-2) + 
-             ("0" + ahora.getMinutes()).slice(-2) + 
-             ("0" + ahora.getSeconds()).slice(-2);
+              ("0" + (ahora.getMonth() + 1)).slice(-2) + 
+              ("0" + ahora.getDate()).slice(-2) + 
+              ("0" + ahora.getHours()).slice(-2) + 
+              ("0" + ahora.getMinutes()).slice(-2) + 
+              ("0" + ahora.getSeconds()).slice(-2);
 
      // --- CARGA DEL CSS ---
      const link = document.createElement('link');
@@ -638,7 +672,7 @@ $("btnConfirmarRenombrar").onclick = () => {
      document.head.appendChild(link);
 
      // --- CARGA DE LOS SCRIPTS ---
-     const scripts = ["js/export-pdf.js", "js/export-html.js"];
+     const scripts = ["js/export-pdf.js", "js/export-html.js", "js/export-docx.js"];
      scripts.forEach(src => {
 	 const s = document.createElement('script');
 	 s.src = `${src}?v=${v}`;
