@@ -132,24 +132,63 @@
 </div>
 
 <script>
-let desviaciones = [];
-let editIndex = null;
+ let desviaciones = [];
+ let editIndex = null;
+ let latitudActual = null;
+ let longitudActual = null;
 
-// Gestión de secciones
-const SECCIONES_KEY = "desviaciones_v1_9_secciones";
-const SECCION_ACTUAL_KEY = "desviaciones_v1_9_seccion_actual";
-const DATA_PREFIX = "desviaciones_v1_9_";
+ // Gestión de secciones
+ const SECCIONES_KEY = "desviaciones_v1_9_secciones";
+ const SECCION_ACTUAL_KEY = "desviaciones_v1_9_seccion_actual";
+ const DATA_PREFIX = "desviaciones_v1_9_";
 
-function $(id){ return document.getElementById(id); }
+ function $(id){ return document.getElementById(id); }
 
-const ORDEN_TIPOS = [
-  "Almacenamiento","Productos químicos","Mangueras","Herramientas",
-  "Equipos e instalaciones","Elementos de seguridad y EPI's",
-  "Zonas de paso y comunes","Señalización y comunicación","Residuos"
-];
+ const ORDEN_TIPOS = [
+     "Almacenamiento","Productos químicos","Mangueras","Herramientas",
+     "Equipos e instalaciones","Elementos de seguridad y EPI's",
+     "Zonas de paso y comunes","Señalización y comunicación","Residuos"
+ ];
 
-function cargarSecciones(){
-  let lista = [];
+ function capturarUbicacionGPS() {
+     latitudActual = null;
+     longitudActual = null;
+
+     if (!("geolocation" in navigator)) {
+         alert("Tu navegador no soporta GPS");
+         return;
+     }
+
+     // Usamos watchPosition en lugar de getCurrentPosition para que sea más rápido al guardar
+     navigator.geolocation.getCurrentPosition(
+         (pos) => {
+             latitudActual = pos.coords.latitude;
+             longitudActual = pos.coords.longitude;
+             console.log("📍 GPS capturado con éxito");
+         },
+         (err) => {
+             // Esto te dirá exactamente por qué falla
+             let mensaje = "Error GPS: ";
+             switch(err.code) {
+                 case err.PERMISSION_DENIED: mensaje += "No diste permiso."; break;
+                 case err.POSITION_UNAVAILABLE: mensaje += "Ubicación no disponible (¿tienes el GPS del móvil encendido?)."; break;
+                 case err.TIMEOUT: mensaje += "Tiempo de espera agotado."; break;
+                 default: mensaje += "Error desconocido."; break;
+             }
+             console.warn(mensaje);
+             // Descomenta la línea de abajo solo para probar en el móvil:
+             // alert(mensaje); 
+         },
+         { 
+             enableHighAccuracy: true, // Fuerza el uso de GPS real, no solo WiFi
+             timeout: 10000,           // Le damos 10 segundos
+             maximumAge: 0             // No queremos posiciones antiguas de caché
+         }
+     );
+ }
+
+ function cargarSecciones(){
+     let lista = [];
   try{
     const raw = localStorage.getItem(SECCIONES_KEY);
     if(raw){
@@ -202,184 +241,205 @@ function guardarDatosSeccion(id){
     actualizarIndicadorEspacio();
 }
 
-function actualizarSelectorSecciones(){
-  const secciones = cargarSecciones();
-  const actual = getSeccionActualId();
-  const sel = $("seccionSelect");
-  sel.innerHTML = "";
-  secciones.forEach(id=>{
-    const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = id;
-    if(id === actual) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
+ function actualizarSelectorSecciones(){
+     const secciones = cargarSecciones();
+     const actual = getSeccionActualId();
+     const sel = $("seccionSelect");
+     sel.innerHTML = "";
+     secciones.forEach(id=>{
+	 const opt = document.createElement("option");
+	 opt.value = id;
+	 opt.textContent = id;
+	 if(id === actual) opt.selected = true;
+	 sel.appendChild(opt);
+     });
+ }
 
-// Reducir imagen
-async function reducir(file){
- return new Promise(res=>{
-  let r=new FileReader();
-  r.onload=e=>{
-   let img=new Image();
-   img.onload=()=>{
-    let MAX=500; // Mantenemos 500px de ancho
-    let sc=MAX/img.width;
-    let c=document.createElement("canvas");
-    c.width=MAX;
-    c.height=img.height*sc;
-    const ctx = c.getContext("2d");
+ // Reducir imagen
+ async function reducir(file){
+     return new Promise(res=>{
+	 let r=new FileReader();
+	 r.onload=e=>{
+	     let img=new Image();
+	     img.onload=()=>{
+		 let MAX=500; // Mantenemos 500px de ancho
+		 let sc=MAX/img.width;
+		 let c=document.createElement("canvas");
+		 c.width=MAX;
+		 c.height=img.height*sc;
+		 const ctx = c.getContext("2d");
 
-    // Fondo blanco para evitar transparencias negras en JPEG
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(img,0,0,c.width,c.height);
+		 // Fondo blanco para evitar transparencias negras en JPEG
+		 ctx.fillStyle = "#FFFFFF";
+		 ctx.fillRect(0, 0, c.width, c.height);
+		 ctx.drawImage(img,0,0,c.width,c.height);
 
-    // CAMBIO CLAVE: "image/jpeg" con calidad 0.6
-    // Esto hace que la foto pase de 400KB a unos 50KB.
-    res(c.toDataURL("image/jpeg", 0.6));
-   };
-   img.src=e.target.result;
-  };
-  r.readAsDataURL(file);
+		 // CAMBIO CLAVE: "image/jpeg" con calidad 0.6
+		 // Esto hace que la foto pase de 400KB a unos 50KB.
+		 res(c.toDataURL("image/jpeg", 0.6));
+	     };
+	     img.src=e.target.result;
+	 };
+	 r.readAsDataURL(file);
+     });
+ }
+
+ // Render lista
+ function render(){
+     $("formTitulo").textContent = editIndex === null ? `➕ Nueva desviación (${desviaciones.length})` : "✏️ Editar desviación";
+     let lista=$("lista");
+     lista.innerHTML="";
+     if(desviaciones.length===0){$("noDatos").style.display="block";return;}
+     $("noDatos").style.display="none";
+
+     [...desviaciones].reverse().forEach((d,i)=>{
+	 let real=desviaciones.length-1-i;
+	 let div=document.createElement("div");
+	 div.className="desv-item";
+
+	 let left=document.createElement("div");
+	 left.style.display="flex";
+
+	 if(d.foto){
+	     let img=document.createElement("img");
+	     img.src=d.foto; img.className="thumb";
+	     
+	     img.style.cursor = "zoom-in"; // Cambia el cursor para indicar que es clickeable
+	     img.onclick = () => ampliarImagen(d.foto); // Llama a la función que creamos antes
+	     
+	     left.appendChild(img);
+	 }
+
+	 let info = document.createElement("div");
+	 // 1. Definimos el icono según la disponibilidad
+	 // Si hay GPS: Globo terráqueo. Si no: Señal de no disponible.
+	 const iconoGPS = (d.lat && d.lon) 
+			? "<span title='GPS Disponible'>🌎 </span>" 
+			: "<span style='opacity: 0.3; filter: grayscale(1);' title='GPS no disponible'>🚫 </span>";
+
+	 // 2. Lo aplicamos al innerHTML
+	 info.className = "info-text-wrap"; 
+	 info.innerHTML = `
+	     <strong>${d.tipo}</strong><br>
+	     ${d.descripcion || ""}<br>
+	     <span style='color:#666; font-size:12px;'>
+		 ${iconoGPS}📍 ${d.ubicacion || "—"}
+	     </span>
+	 `;
+	 left.appendChild(info);
+
+	 let right=document.createElement("div");
+	 right.innerHTML=`<button class='btn-secondary btn-small' onclick='editar(${real})'>Editar</button>
+	 <button class='btn-danger btn-small' onclick='borrar(${real})'>Borrar</button>`;
+
+	 div.appendChild(left); div.appendChild(right);
+	 lista.appendChild(div);
+     });
+ }
+
+ // Form submit
+ async function procesarGuardado() {
+     let tipo = $("tipo").value;
+     if (!tipo) { alert("Selecciona un tipo"); return; }
+     
+     let desc = $("descripcion").value.trim();
+     let ub = $("ubicacion").value.trim();
+     let file = $("foto").files[0];
+     let foto = null;
+
+     if (file) foto = await reducir(file);
+     let obj = { 
+	 tipo, 
+	 descripcion: desc, 
+	 ubicacion: ub, 
+	 foto,
+	 lat: latitudActual, 
+	 lon: longitudActual 
+     };
+
+     if (editIndex === null) {
+         desviaciones.push(obj);
+     } else {
+         if (!foto) obj.foto = desviaciones[editIndex].foto;
+         desviaciones[editIndex] = obj;
+         editIndex = null;
+         $("btnGuardar").textContent = "Añadir desviación";
+         $("btnCancelarEdicion").style.display = "none";
+     }
+
+     capturarUbicacionGPS()
+     
+     // Limpiar campos
+     $("descripcion").value = ""; 
+     $("ubicacion").value = ""; 
+     $("foto").value = ""; 
+     $("tipo").value = "";
+
+     guardarDatosSeccion(getSeccionActualId());
+     render();
+     console.log("✅ Guardado automático");
+ }
+
+ // Evento del formulario original (clic en botón)
+ $("formDesv").addEventListener("submit", async e => {
+     e.preventDefault();
+     await procesarGuardado();
  });
-}
 
-// Render lista
-function render(){
- $("formTitulo").textContent = editIndex === null ? `➕ Nueva desviación (${desviaciones.length})` : "✏️ Editar desviación";
- let lista=$("lista");
- lista.innerHTML="";
- if(desviaciones.length===0){$("noDatos").style.display="block";return;}
- $("noDatos").style.display="none";
+ // NUEVO: Evento automático al terminar de hacer la foto
+ $("foto").onchange = async () => {
+     if ($("foto").files && $("foto").files.length > 0) {
+         // Un pequeño retraso visual para que el usuario vea que algo pasa
+         $("btnGuardar").textContent = "Procesando...";
+         await procesarGuardado();
+         $("btnGuardar").textContent = "Añadir desviación";
+     }
+ };
 
- [...desviaciones].reverse().forEach((d,i)=>{
-  let real=desviaciones.length-1-i;
-  let div=document.createElement("div");
-  div.className="desv-item";
+ function editar(i) {
+     editIndex = i; 
+     let d = desviaciones[i];
+     
+     // Rellenamos los campos
+     $("tipo").value = d.tipo; 
+     $("descripcion").value = d.descripcion; 
+     $("ubicacion").value = d.ubicacion;
+     
+     // Cambiamos textos de la interfaz
+     $("btnGuardar").textContent = "Guardar cambios"; 
+     $("btnCancelarEdicion").style.display = "inline-block";
+     
+     // Usamos innerHTML para el icono
+     $("formTitulo").innerHTML = "✏️ Editar desviación";
 
-  let left=document.createElement("div");
-  left.style.display="flex";
+     // --- EL SCROLL AUTOMÁTICO ---
+     // Esto sube la pantalla hasta el inicio del formulario
+     $("formDesv").scrollIntoView({ behavior: 'smooth', block: 'start' });
+ }
 
-  if(d.foto){
-    let img=document.createElement("img");
-    img.src=d.foto; img.className="thumb";
-    
-    img.style.cursor = "zoom-in"; // Cambia el cursor para indicar que es clickeable
-    img.onclick = () => ampliarImagen(d.foto); // Llama a la función que creamos antes
-    
-    left.appendChild(img);
-  }
+ function borrar(i){
+     if(!confirm("¿Seguro que quieres borrar esta desviación?"))return;
+     desviaciones.splice(i,1);
+     guardarDatosSeccion(getSeccionActualId());
+     render();
+ }
 
-  let info = document.createElement("div");
-    // Añadimos la clase info-text-wrap para que el CSS la controle
-    info.className = "info-text-wrap"; 
-    info.innerHTML = `<strong>${d.tipo}</strong><br>${d.descripcion || ""}<br><span style='color:#666; font-size:12px;'>📍 ${d.ubicacion || "—"}</span>`;
-    left.appendChild(info);
-
-  let right=document.createElement("div");
-  right.innerHTML=`<button class='btn-secondary btn-small' onclick='editar(${real})'>Editar</button>
-  <button class='btn-danger btn-small' onclick='borrar(${real})'>Borrar</button>`;
-
-  div.appendChild(left); div.appendChild(right);
-  lista.appendChild(div);
- });
-}
-
-// Form submit
-async function procesarGuardado() {
-    let tipo = $("tipo").value;
-    if (!tipo) { alert("Selecciona un tipo"); return; }
-    
-    let desc = $("descripcion").value.trim();
-    let ub = $("ubicacion").value.trim();
-    let file = $("foto").files[0];
-    let foto = null;
-
-    if (file) foto = await reducir(file);
-    let obj = { tipo, descripcion: desc, ubicacion: ub, foto };
-
-    if (editIndex === null) {
-        desviaciones.push(obj);
-    } else {
-        if (!foto) obj.foto = desviaciones[editIndex].foto;
-        desviaciones[editIndex] = obj;
-        editIndex = null;
-        $("btnGuardar").textContent = "Añadir desviación";
-        $("btnCancelarEdicion").style.display = "none";
-    }
-
-    // Limpiar campos
-    $("descripcion").value = ""; 
-    $("ubicacion").value = ""; 
-    $("foto").value = ""; 
-    $("tipo").value = "";
-
-    guardarDatosSeccion(getSeccionActualId());
-    render();
-    console.log("✅ Guardado automático");
-}
-
-// Evento del formulario original (clic en botón)
-$("formDesv").addEventListener("submit", async e => {
-    e.preventDefault();
-    await procesarGuardado();
-});
-
-// NUEVO: Evento automático al terminar de hacer la foto
-$("foto").onchange = async () => {
-    if ($("foto").files && $("foto").files.length > 0) {
-        // Un pequeño retraso visual para que el usuario vea que algo pasa
-        $("btnGuardar").textContent = "Procesando...";
-        await procesarGuardado();
-        $("btnGuardar").textContent = "Añadir desviación";
-    }
-};
-
-function editar(i) {
-    editIndex = i; 
-    let d = desviaciones[i];
-    
-    // Rellenamos los campos
-    $("tipo").value = d.tipo; 
-    $("descripcion").value = d.descripcion; 
-    $("ubicacion").value = d.ubicacion;
-    
-    // Cambiamos textos de la interfaz
-    $("btnGuardar").textContent = "Guardar cambios"; 
-    $("btnCancelarEdicion").style.display = "inline-block";
-    
-    // Usamos innerHTML para el icono
-    $("formTitulo").innerHTML = "✏️ Editar desviación";
-
-    // --- EL SCROLL AUTOMÁTICO ---
-    // Esto sube la pantalla hasta el inicio del formulario
-    $("formDesv").scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function borrar(i){
- if(!confirm("¿Seguro que quieres borrar esta desviación?"))return;
- desviaciones.splice(i,1);
- guardarDatosSeccion(getSeccionActualId());
- render();
-}
-
-$("btnCancelarEdicion").onclick=()=>{
- editIndex=null;
- $("btnGuardar").textContent="Añadir desviación";
- $("btnCancelarEdicion").style.display="none";
- render();
- $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
-};
+ $("btnCancelarEdicion").onclick=()=>{
+     editIndex=null;
+     $("btnGuardar").textContent="Añadir desviación";
+     $("btnCancelarEdicion").style.display="none";
+     render();
+     $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
+ };
 
 // Nueva sección
-$("btnNuevaSeccion").onclick = () => {
-  // 1. Actualizamos el mensaje de ayuda
-  let nombre = prompt("Nombre de la nueva sección (puedes usar espacios y tildes):");
-  if (!nombre) return;
-  
-  nombre = nombre.trim();
-  if (!nombre) return;
+ $("btnNuevaSeccion").onclick = () => {
+     // 1. Actualizamos el mensaje de ayuda
+     let nombre = prompt("Nombre de la nueva sección (puedes usar espacios y tildes):");
+     if (!nombre) return;
+     
+     nombre = nombre.trim();
+     if (!nombre) return;
 
      // 2. Eliminamos las líneas que quitaban espacios y caracteres especiales
      // Solo eliminamos caracteres que podrían dar problemas en nombres de archivos al exportar
@@ -592,49 +652,49 @@ $("btnDescargarPDF").onclick = async () => {
 
 // --- FUNCIONES DE MEMORIA Y BACKUP PARA V1.9 ---
 
-function actualizarIndicadorEspacio() {
-    let totalCaracteres = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-        let key = localStorage.key(i);
-        totalCaracteres += (localStorage.getItem(key).length + key.length);
-    }
-    const limite = 5 * 1024 * 1024; // 5MB
-    const porcentaje = Math.min((totalCaracteres / limite) * 100, 100).toFixed(1);
-    const mbOcupados = (totalCaracteres / (1024 * 1024)).toFixed(2);
+ function actualizarIndicadorEspacio() {
+     let totalCaracteres = 0;
+     for (let i = 0; i < localStorage.length; i++) {
+         let key = localStorage.key(i);
+         totalCaracteres += (localStorage.getItem(key).length + key.length);
+     }
+     const limite = 5 * 1024 * 1024; // 5MB
+     const porcentaje = Math.min((totalCaracteres / limite) * 100, 100).toFixed(1);
+     const mbOcupados = (totalCaracteres / (1024 * 1024)).toFixed(2);
 
-    if($("espacioTexto")){
-        $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
-        $("espacioMB").textContent = `${mbOcupados} / 5 MB`;
-        $("barraProgreso").style.width = porcentaje + "%";
-        $("barraProgreso").style.background = porcentaje > 80 ? "#d32f2f" : (porcentaje > 50 ? "#f57c00" : "#1976d2");
-    }
-}
+     if($("espacioTexto")){
+         $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
+         $("espacioMB").textContent = `${mbOcupados} / 5 MB`;
+         $("barraProgreso").style.width = porcentaje + "%";
+         $("barraProgreso").style.background = porcentaje > 80 ? "#d32f2f" : (porcentaje > 50 ? "#f57c00" : "#1976d2");
+     }
+ }
 
-// EXPORTAR (BACKUP)
-$("btnExportarJSON").onclick = () => {
-    const backup = {
-        app: "Informe O&L v1.9",
-        fecha: new Date().toISOString(),
-        secciones: JSON.parse(localStorage.getItem("desviaciones_v1_9_secciones") || '[]'),
-        datos: {}
-    };
+ // EXPORTAR (BACKUP)
+ $("btnExportarJSON").onclick = () => {
+     const backup = {
+         app: "Informe O&L v1.9",
+         fecha: new Date().toISOString(),
+         secciones: JSON.parse(localStorage.getItem("desviaciones_v1_9_secciones") || '[]'),
+         datos: {}
+     };
 
-    // Buscamos todas las claves que empiecen por tu prefijo real
-    for (let i = 0; i < localStorage.length; i++) {
-        const clave = localStorage.key(i);
-        if (clave.startsWith("desviaciones_v1_9_") && clave !== "desviaciones_v1_9_secciones" && clave !== "desviaciones_v1_9_seccion_actual") {
-            try {
-                backup.datos[clave] = JSON.parse(localStorage.getItem(clave));
-            } catch (e) {}
-        }
-    }
+     // Buscamos todas las claves que empiecen por tu prefijo real
+     for (let i = 0; i < localStorage.length; i++) {
+         const clave = localStorage.key(i);
+         if (clave.startsWith("desviaciones_v1_9_") && clave !== "desviaciones_v1_9_secciones" && clave !== "desviaciones_v1_9_seccion_actual") {
+             try {
+                 backup.datos[clave] = JSON.parse(localStorage.getItem(clave));
+             } catch (e) {}
+         }
+     }
 
-    const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
+     const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+     const url = URL.createObjectURL(blob);
+     const a = document.createElement("a");
+     a.href = url;
+     a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
+     a.click();
  };
 
 // Exportar solo la sección actual en formato JSON
@@ -674,33 +734,33 @@ $("btnExportarSeccion").onclick = () => {
  // IMPORTAR (RESTAURAR)
  $("btnImportarJSON").onclick = () => $("inputImportar").click();
 
-$("inputImportar").onchange = (e) => {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
-    const lector = new FileReader();
-    lector.onload = (event) => {
-        try {
-            const backup = JSON.parse(event.target.result);
-            if (!backup.secciones || !backup.datos) throw new Error("Archivo no válido");
-            
-            if (confirm("Se borrarán los datos actuales para cargar el backup. ¿Continuar?")) {
-                localStorage.clear();
-                localStorage.setItem("desviaciones_v1_9_secciones", JSON.stringify(backup.secciones));
-                for (const clave in backup.datos) {
-                    localStorage.setItem(clave, JSON.stringify(backup.datos[clave]));
-                }
-                alert("✅ Importación completada.");
-                location.reload();
-            }
-        } catch (err) { alert("Error: " + err.message); }
-    };
-    lector.readAsText(archivo);
-};
+ $("inputImportar").onchange = (e) => {
+     const archivo = e.target.files[0];
+     if (!archivo) return;
+     const lector = new FileReader();
+     lector.onload = (event) => {
+         try {
+             const backup = JSON.parse(event.target.result);
+             if (!backup.secciones || !backup.datos) throw new Error("Archivo no válido");
+             
+             if (confirm("Se borrarán los datos actuales para cargar el backup. ¿Continuar?")) {
+                 localStorage.clear();
+                 localStorage.setItem("desviaciones_v1_9_secciones", JSON.stringify(backup.secciones));
+                 for (const clave in backup.datos) {
+                     localStorage.setItem(clave, JSON.stringify(backup.datos[clave]));
+                 }
+                 alert("✅ Importación completada.");
+                 location.reload();
+             }
+         } catch (err) { alert("Error: " + err.message); }
+     };
+     lector.readAsText(archivo);
+ };
 
  // 1. Al hacer clic en el botón, disparamos el selector de archivos oculto
-$("btnImportarSeccion").onclick = () => {
-    $("inputArchivoSeccion").click();
-};
+ $("btnImportarSeccion").onclick = () => {
+     $("inputArchivoSeccion").click();
+ };
 
 // 2. Cuando el usuario selecciona un archivo...
 $("inputArchivoSeccion").onchange = (e) => {
@@ -796,4 +856,5 @@ function cerrarImagen(modal) {
     <span style="position: absolute; top: 15px; right: 25px; color: white; font-size: 35px; font-weight: bold;">&times;</span>
 </div>
 
-</body></html>
+</body>
+</html>

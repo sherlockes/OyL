@@ -220,7 +220,35 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
                 const fotoMini = await achicarParaPDF(d.foto);
                 const centroX = margin + (colW - W) / 2;
                 doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, centroX, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
-                curY += H + 5;
+
+		// --- AÑADIR ICONO GPS SOBRE LA FOTO ---
+		if (d.lat && d.lon) {
+		    // Tamaño del icono y margen desde la esquina de la foto
+		    const sIcon = 5; // 5mm x 5mm
+		    const padding = 1.5; // Margen de seguridad
+
+		    // Calculamos la posición: Esquina Superior Derecha de la foto
+		    const iconX = centroX + W - sIcon - padding;
+		    const iconY = curY + padding;
+
+		    // Dibujamos un fondo circular blanco para dar contraste
+		    doc.setFillColor(255, 255, 255);
+		    doc.circle(iconX + (sIcon / 2), iconY + (sIcon / 2), (sIcon / 2) + 0.5, 'F');
+
+		    // Dibujamos el icono del globo (🌎 en Unicode o un Base64 embebido)
+		    // Como '🌎' Unicode no siempre funciona en todos los PDFs, 
+		    // usaremos el verde corporativo de tu informe para el texto.
+		    doc.setFontSize(10);
+		    doc.setTextColor(0, 121, 52); // El verde de tu informe (#007934)
+		    doc.text("📍", iconX + 0.5, iconY + 4); // Unicode estable
+		    doc.setTextColor(0, 0, 0); // Reset a negro
+
+		    // Creamos el ENLACE CLICKABLE invisible sobre el icono
+		    const googleMapsUrl = `https://www.google.com/maps?q=${d.lat},${d.lon}`;
+		    doc.link(iconX, iconY, sIcon, sIcon, { url: googleMapsUrl });
+		}
+
+		curY += H + 5;
             }
 
             // 7. INSERTAR TEXTOS
