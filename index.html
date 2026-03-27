@@ -154,102 +154,102 @@
      "Zonas de paso y comunes","Señalización y comunicación","Residuos"
  ];
 
-function capturarUbicacionGPS() {
-    const statusDiv = document.getElementById("statusGPS");
-    latitudActual = null;
-    longitudActual = null;
-    
-    if (statusDiv) {
-        statusDiv.innerHTML = "📡 Buscando satélites...";
-        statusDiv.style.color = "#666";
-    }
+ function capturarUbicacionGPS() {
+     const statusDiv = document.getElementById("statusGPS");
+     latitudActual = null;
+     longitudActual = null;
+     
+     if (statusDiv) {
+         statusDiv.innerHTML = "📡 Buscando satélites...";
+         statusDiv.style.color = "#666";
+     }
 
-    if (!("geolocation" in navigator)) {
-        if (statusDiv) statusDiv.innerHTML = "❌ GPS no soportado";
-        return;
-    }
+     if (!("geolocation" in navigator)) {
+         if (statusDiv) statusDiv.innerHTML = "❌ GPS no soportado";
+         return;
+     }
 
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            latitudActual = pos.coords.latitude;
-            longitudActual = pos.coords.longitude;
-            console.log("📍 GPS OK:", latitudActual, longitudActual);
-            
-            if (statusDiv) {
-                statusDiv.innerHTML = "✅ Ubicación capturada con éxito";
-                statusDiv.style.color = "#007934"; // Verde
-            }
-        },
-        (err) => {
-            console.warn("Error GPS:", err.message);
-            if (statusDiv) {
-                statusDiv.style.color = "#d32f2f"; // Rojo
-                if (err.code === 1) statusDiv.innerHTML = "❌ Permiso denegado";
-                else if (err.code === 3) statusDiv.innerHTML = "❌ Tiempo agotado (GPS débil)";
-                else statusDiv.innerHTML = "❌ Error al obtener ubicación";
-            }
-        },
-        { 
-            enableHighAccuracy: true, 
-            timeout: 8000, // Le damos 8 segundos para fijar posición
-            maximumAge: 0 
-        }
-    );
+     navigator.geolocation.getCurrentPosition(
+         (pos) => {
+             latitudActual = pos.coords.latitude;
+             longitudActual = pos.coords.longitude;
+             console.log("📍 GPS OK:", latitudActual, longitudActual);
+             
+             if (statusDiv) {
+                 statusDiv.innerHTML = "✅ Ubicación capturada con éxito";
+                 statusDiv.style.color = "#007934"; // Verde
+             }
+         },
+         (err) => {
+             console.warn("Error GPS:", err.message);
+             if (statusDiv) {
+                 statusDiv.style.color = "#d32f2f"; // Rojo
+                 if (err.code === 1) statusDiv.innerHTML = "❌ Permiso denegado";
+                 else if (err.code === 3) statusDiv.innerHTML = "❌ Tiempo agotado (GPS débil)";
+                 else statusDiv.innerHTML = "❌ Error al obtener ubicación";
+             }
+         },
+         { 
+             enableHighAccuracy: true, 
+             timeout: 8000, // Le damos 8 segundos para fijar posición
+             maximumAge: 0 
+         }
+     );
  }
 
  function cargarSecciones(){
      let lista = [];
-  try{
-    const raw = localStorage.getItem(SECCIONES_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      if(Array.isArray(parsed)) lista = parsed;
-    }
-  }catch(e){}
-  if(lista.length === 0){
-    lista = ["seccion_1"];
-    localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
-  }
-  return lista;
-}
+     try{
+	 const raw = localStorage.getItem(SECCIONES_KEY);
+	 if(raw){
+	     const parsed = JSON.parse(raw);
+	     if(Array.isArray(parsed)) lista = parsed;
+	 }
+     }catch(e){}
+     if(lista.length === 0){
+	 lista = ["seccion_1"];
+	 localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
+     }
+     return lista;
+ }
 
-function guardarSecciones(lista){
-  localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
-}
+ function guardarSecciones(lista){
+     localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
+ }
 
-function getSeccionActualId(){
-  let id = localStorage.getItem(SECCION_ACTUAL_KEY);
-  const secciones = cargarSecciones();
-  if(!id || !secciones.includes(id)){
-    id = secciones[0];
-    localStorage.setItem(SECCION_ACTUAL_KEY, id);
-  }
-  return id;
-}
+ function getSeccionActualId(){
+     let id = localStorage.getItem(SECCION_ACTUAL_KEY);
+     const secciones = cargarSecciones();
+     if(!id || !secciones.includes(id)){
+	 id = secciones[0];
+	 localStorage.setItem(SECCION_ACTUAL_KEY, id);
+     }
+     return id;
+ }
 
-function setSeccionActualId(id){
-  localStorage.setItem(SECCION_ACTUAL_KEY, id);
-}
+ function setSeccionActualId(id){
+     localStorage.setItem(SECCION_ACTUAL_KEY, id);
+ }
 
-function cargarDatosSeccion(id){
-  desviaciones = [];
-  try{
-    const raw = localStorage.getItem(DATA_PREFIX + id);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      if(Array.isArray(parsed)) desviaciones = parsed;
-    }
-  }catch(e){}
-  editIndex = null;
-  $("btnGuardar").textContent = "Añadir desviación";
-  $("btnCancelarEdicion").style.display = "none";
-  render();
-}
+ function cargarDatosSeccion(id){
+     desviaciones = [];
+     try{
+	 const raw = localStorage.getItem(DATA_PREFIX + id);
+	 if(raw){
+	     const parsed = JSON.parse(raw);
+	     if(Array.isArray(parsed)) desviaciones = parsed;
+	 }
+     }catch(e){}
+     editIndex = null;
+     $("btnGuardar").textContent = "Añadir desviación";
+     $("btnCancelarEdicion").style.display = "none";
+     render();
+ }
 
-function guardarDatosSeccion(id){
-    localStorage.setItem(DATA_PREFIX + id, JSON.stringify(desviaciones));
-    actualizarIndicadorEspacio();
-}
+ function guardarDatosSeccion(id){
+     localStorage.setItem(DATA_PREFIX + id, JSON.stringify(desviaciones));
+     actualizarIndicadorEspacio();
+ }
 
  function actualizarSelectorSecciones(){
      const secciones = cargarSecciones();
@@ -323,10 +323,8 @@ function guardarDatosSeccion(id){
 	 let info = document.createElement("div");
 	 // 1. Definimos el icono según la disponibilidad
 	 // Si hay GPS: Globo terráqueo. Si no: Señal de no disponible.
-	 const iconoGPS = (d.lat && d.lon) 
-			? "<span title='GPS Disponible'>🌎 </span>" 
-			: "<span style='opacity: 0.3; filter: grayscale(1);' title='GPS no disponible'>🚫 </span>";
-
+	 const iconoGPS = (d.lat !== null && d.lon !== null) ? "🌎 " : "🚫 ";
+	 
 	 // 2. Lo aplicamos al innerHTML
 	 info.className = "info-text-wrap"; 
 	 info.innerHTML = `
@@ -376,8 +374,6 @@ function guardarDatosSeccion(id){
          $("btnGuardar").textContent = "Añadir desviación";
          $("btnCancelarEdicion").style.display = "none";
      }
-
-     capturarUbicacionGPS()
      
      // Limpiar campos
      $("descripcion").value = ""; 
@@ -442,7 +438,7 @@ function guardarDatosSeccion(id){
      $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
  };
 
-// Nueva sección
+ // Nueva sección
  $("btnNuevaSeccion").onclick = () => {
      // 1. Actualizamos el mensaje de ayuda
      let nombre = prompt("Nombre de la nueva sección (puedes usar espacios y tildes):");
@@ -499,29 +495,29 @@ $("btnConfirmarRenombrar").onclick = () => {
     // Aplicamos la misma lógica permisiva que en la creación
     nuevo = nuevo.trim().replace(/[\\/:*?"<>|]/g, "");
 
-    if (!nuevo || nuevo === actual) {
-        $("btnCancelarRenombrar").click();
-        return;
-    }
+     if (!nuevo || nuevo === actual) {
+         $("btnCancelarRenombrar").click();
+         return;
+     }
 
-    let secciones = cargarSecciones();
-    if (secciones.includes(nuevo)) {
-        alert("Ese nombre ya existe.");
-        return;
-    }
+     let secciones = cargarSecciones();
+     if (secciones.includes(nuevo)) {
+         alert("Ese nombre ya existe.");
+         return;
+     }
 
-    // El resto del código de mover datos y actualizar secciones se mantiene igual...
-    const datos = localStorage.getItem(DATA_PREFIX + actual);
-    if (datos !== null) {
-        localStorage.setItem(DATA_PREFIX + nuevo, datos);
-        localStorage.removeItem(DATA_PREFIX + actual);
-    }
+     // El resto del código de mover datos y actualizar secciones se mantiene igual...
+     const datos = localStorage.getItem(DATA_PREFIX + actual);
+     if (datos !== null) {
+         localStorage.setItem(DATA_PREFIX + nuevo, datos);
+         localStorage.removeItem(DATA_PREFIX + actual);
+     }
 
-    secciones = secciones.map(id => id === actual ? nuevo : id);
-    guardarSecciones(secciones);
-    setSeccionActualId(nuevo);
+     secciones = secciones.map(id => id === actual ? nuevo : id);
+     guardarSecciones(secciones);
+     setSeccionActualId(nuevo);
 
-    window.location.reload();
+     window.location.reload();
  };
 
  // Cambio de sección
@@ -566,42 +562,42 @@ $("btnConfirmarRenombrar").onclick = () => {
      cargarDatosSeccion("seccion_1");
  };
 
-// Resumen
-function resumen(grupos){
- let arr=[];
- ORDEN_TIPOS.forEach(t=>{
-  if(grupos[t]&&grupos[t].length>0){
-   let n=grupos[t].length;
-   arr.push(`${t}: ${n} ${n===1?"desviación":"desviaciones"}`);
-  }
- });
- return arr;
-}
+ // Resumen
+ function resumen(grupos){
+     let arr=[];
+     ORDEN_TIPOS.forEach(t=>{
+	 if(grupos[t]&&grupos[t].length>0){
+	     let n=grupos[t].length;
+	     arr.push(`${t}: ${n} ${n===1?"desviación":"desviaciones"}`);
+	 }
+     });
+     return arr;
+ }
 
-// Exportar HTML
-$("btnDescargarHTML").onclick = () => {
-    if (desviaciones.length === 0) {
-        alert("No hay datos para exportar");
-        return;
-    }
+ // Exportar HTML
+ $("btnDescargarHTML").onclick = () => {
+     if (desviaciones.length === 0) {
+         alert("No hay datos para exportar");
+         return;
+     }
 
-    // Capturamos la sección seleccionada
-    const combo = document.getElementById("seccionSelect");
-    const nombreSeccion = combo.options[combo.selectedIndex].text;
+     // Capturamos la sección seleccionada
+     const combo = document.getElementById("seccionSelect");
+     const nombreSeccion = combo.options[combo.selectedIndex].text;
 
-    // Llamamos a la nueva función externa
-    generarHTML(desviaciones, nombreSeccion);
-};
+     // Llamamos a la nueva función externa
+     generarHTML(desviaciones, nombreSeccion);
+ };
 
-// Exportar PDF
-$("btnDescargarPDF").onclick = async () => {
-    if (desviaciones.length === 0) {
-        alert("No hay datos para exportar");
-        return;
-    }
+ // Exportar PDF
+ $("btnDescargarPDF").onclick = async () => {
+     if (desviaciones.length === 0) {
+         alert("No hay datos para exportar");
+         return;
+     }
 
-    // Solicitamos los datos para la portada
-    // Configuramos el formato: mes largo y año numérico
+     // Solicitamos los datos para la portada
+     // Configuramos el formato: mes largo y año numérico
      const opciones = { month: 'long', year: 'numeric' };
      let fechaPorDefecto = new Date().toLocaleDateString('es-ES', opciones);
 
@@ -616,51 +612,51 @@ $("btnDescargarPDF").onclick = async () => {
      if (notaManual === null) return; // Cancelado
 
      const combo = document.getElementById("seccionSelect");
-    const nombreSeccion = combo.options[combo.selectedIndex].text; 
+     const nombreSeccion = combo.options[combo.selectedIndex].text; 
 
-    try {
-        // Pasamos los nuevos datos a la función generarPDF
-        await generarPDF(desviaciones, nombreSeccion, fechaManual, notaManual);
-    } catch (error) {
-        console.error("Error en la exportación:", error);
-        alert("Error al generar el PDF. Revisa la consola.");
-    }
+     try {
+         // Pasamos los nuevos datos a la función generarPDF
+         await generarPDF(desviaciones, nombreSeccion, fechaManual, notaManual);
+     } catch (error) {
+         console.error("Error en la exportación:", error);
+         alert("Error al generar el PDF. Revisa la consola.");
+     }
  };
 
 
  // Control de versiones y carga automática de CSS y JS
  (function() {
      const ahora = new Date();
-  const v = ahora.getFullYear() + 
-            ("0" + (ahora.getMonth() + 1)).slice(-2) + 
-            ("0" + ahora.getDate()).slice(-2) + 
-            ("0" + ahora.getHours()).slice(-2) + 
-            ("0" + ahora.getMinutes()).slice(-2) + 
-            ("0" + ahora.getSeconds()).slice(-2);
+     const v = ahora.getFullYear() + 
+             ("0" + (ahora.getMonth() + 1)).slice(-2) + 
+             ("0" + ahora.getDate()).slice(-2) + 
+             ("0" + ahora.getHours()).slice(-2) + 
+             ("0" + ahora.getMinutes()).slice(-2) + 
+             ("0" + ahora.getSeconds()).slice(-2);
 
-  // --- CARGA DEL CSS ---
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.type = 'text/css';
-  link.href = `css/style.css?v=${v}`;
-  document.head.appendChild(link);
+     // --- CARGA DEL CSS ---
+     const link = document.createElement('link');
+     link.rel = 'stylesheet';
+     link.type = 'text/css';
+     link.href = `css/style.css?v=${v}`;
+     document.head.appendChild(link);
 
-  // --- CARGA DE LOS SCRIPTS ---
-  const scripts = ["js/export-pdf.js", "js/export-html.js"];
-  scripts.forEach(src => {
-    const s = document.createElement('script');
-    s.src = `${src}?v=${v}`;
-    s.async = false; 
-    document.head.appendChild(s);
-  });
+     // --- CARGA DE LOS SCRIPTS ---
+     const scripts = ["js/export-pdf.js", "js/export-html.js"];
+     scripts.forEach(src => {
+	 const s = document.createElement('script');
+	 s.src = `${src}?v=${v}`;
+	 s.async = false; 
+	 document.head.appendChild(s);
+     });
 
-  console.log("🚀 Sistema cargado con versión: " + v);
-  
-  // Ejecutamos el render inicial por si ya había datos en localStorage
-  if(typeof render === "function") render();
-})();
+     console.log("🚀 Sistema cargado con versión: " + v);
+     
+     // Ejecutamos el render inicial por si ya había datos en localStorage
+     if(typeof render === "function") render();
+ })();
 
-// --- FUNCIONES DE MEMORIA Y BACKUP PARA V1.9 ---
+ // --- FUNCIONES DE MEMORIA Y BACKUP PARA V1.9 ---
 
  function actualizarIndicadorEspacio() {
      let totalCaracteres = 0;
@@ -707,38 +703,38 @@ $("btnDescargarPDF").onclick = async () => {
      a.click();
  };
 
-// Exportar solo la sección actual en formato JSON
-$("btnExportarSeccion").onclick = () => {
-    const seccionId = getSeccionActualId(); // Obtenemos el nombre de la sección actual
-    
-    if (!desviaciones || desviaciones.length === 0) {
-        alert("No hay datos en esta sección para exportar.");
-        return;
-    }
+ // Exportar solo la sección actual en formato JSON
+ $("btnExportarSeccion").onclick = () => {
+     const seccionId = getSeccionActualId(); // Obtenemos el nombre de la sección actual
+     
+     if (!desviaciones || desviaciones.length === 0) {
+         alert("No hay datos en esta sección para exportar.");
+         return;
+     }
 
-    // Estructuramos el objeto de exportación
-    const datosAExportar = {
-        tipo: "OYL_SECTION_EXPORT",
-        version: "2.0",
-        nombreSeccion: seccionId,
-        fechaExportacion: new Date().toISOString(),
-        datos: desviaciones // 'desviaciones' es tu array global con los datos actuales
-    };
+     // Estructuramos el objeto de exportación
+     const datosAExportar = {
+         tipo: "OYL_SECTION_EXPORT",
+         version: "2.0",
+         nombreSeccion: seccionId,
+         fechaExportacion: new Date().toISOString(),
+         datos: desviaciones // 'desviaciones' es tu array global con los datos actuales
+     };
 
-    // Crear el archivo para descargar
-    const dataStr = JSON.stringify(datosAExportar, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement("a");
-    const fechaCompacta = new Date().toISOString().slice(0, 10);
-    link.href = url;
-    link.download = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+     // Crear el archivo para descargar
+     const dataStr = JSON.stringify(datosAExportar, null, 2);
+     const blob = new Blob([dataStr], { type: "application/json" });
+     const url = URL.createObjectURL(blob);
+     
+     const link = document.createElement("a");
+     const fechaCompacta = new Date().toISOString().slice(0, 10);
+     link.href = url;
+     link.download = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
+     
+     document.body.appendChild(link);
+     link.click();
+     document.body.removeChild(link);
+     URL.revokeObjectURL(url);
  };
 
  // IMPORTAR (RESTAURAR)
@@ -772,60 +768,60 @@ $("btnExportarSeccion").onclick = () => {
      $("inputArchivoSeccion").click();
  };
 
-// 2. Cuando el usuario selecciona un archivo...
-$("inputArchivoSeccion").onchange = (e) => {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+ // 2. Cuando el usuario selecciona un archivo...
+ $("inputArchivoSeccion").onchange = (e) => {
+     const archivo = e.target.files[0];
+     if (!archivo) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        try {
-            const contenido = JSON.parse(event.target.result);
+     const reader = new FileReader();
+     reader.onload = (event) => {
+         try {
+             const contenido = JSON.parse(event.target.result);
 
-            // Validamos que sea un archivo de sección y no un backup general
-            if (contenido.tipo !== "OYL_SECTION_EXPORT") {
-                alert("Este archivo no es una exportación de sección válida.");
-                return;
-            }
+             // Validamos que sea un archivo de sección y no un backup general
+             if (contenido.tipo !== "OYL_SECTION_EXPORT") {
+                 alert("Este archivo no es una exportación de sección válida.");
+                 return;
+             }
 
-            let nombreSugerido = contenido.nombreSeccion;
-            let secciones = cargarSecciones();
+             let nombreSugerido = contenido.nombreSeccion;
+             let secciones = cargarSecciones();
 
-            // Si la sección ya existe, preguntamos si quiere sobrescribir o renombrar
-            if (secciones.includes(nombreSugerido)) {
-                const confirmacion = confirm(`La sección "${nombreSugerido}" ya existe. ¿Quieres sobrescribir los datos actuales? \n(Aceptar: Sobrescribir / Cancelar: Importar con otro nombre)`);
-                
-                if (!confirmacion) {
-                    const nuevoNombre = prompt("Introduce un nuevo nombre para esta sección:", nombreSugerido + "_Copia");
-                    if (!nuevoNombre) return; // Canceló todo
-                    nombreSugerido = nuevoNombre.trim();
-                }
-            }
+             // Si la sección ya existe, preguntamos si quiere sobrescribir o renombrar
+             if (secciones.includes(nombreSugerido)) {
+                 const confirmacion = confirm(`La sección "${nombreSugerido}" ya existe. ¿Quieres sobrescribir los datos actuales? \n(Aceptar: Sobrescribir / Cancelar: Importar con otro nombre)`);
+                 
+                 if (!confirmacion) {
+                     const nuevoNombre = prompt("Introduce un nuevo nombre para esta sección:", nombreSugerido + "_Copia");
+                     if (!nuevoNombre) return; // Canceló todo
+                     nombreSugerido = nuevoNombre.trim();
+                 }
+             }
 
-            // --- GUARDADO DE DATOS ---
-            // Guardamos las desviaciones en el localStorage
-            localStorage.setItem(DATA_PREFIX + nombreSugerido, JSON.stringify(contenido.datos));
+             // --- GUARDADO DE DATOS ---
+             // Guardamos las desviaciones en el localStorage
+             localStorage.setItem(DATA_PREFIX + nombreSugerido, JSON.stringify(contenido.datos));
 
-            // Si es una sección nueva, la añadimos a la lista global de secciones
-            if (!secciones.includes(nombreSugerido)) {
-                secciones.push(nombreSugerido);
-                guardarSecciones(secciones);
-            }
+             // Si es una sección nueva, la añadimos a la lista global de secciones
+             if (!secciones.includes(nombreSugerido)) {
+                 secciones.push(nombreSugerido);
+                 guardarSecciones(secciones);
+             }
 
-            // Cambiamos a la sección recién importada y recargamos
-            setSeccionActualId(nombreSugerido);
-            alert("Sección '" + nombreSugerido + "' importada correctamente.");
-            window.location.reload();
+             // Cambiamos a la sección recién importada y recargamos
+             setSeccionActualId(nombreSugerido);
+             alert("Sección '" + nombreSugerido + "' importada correctamente.");
+             window.location.reload();
 
-        } catch (error) {
-            console.error(error);
-            alert("Error al leer el archivo. Asegúrate de que sea un JSON válido.");
-        }
-    };
-    reader.readAsText(archivo);
-    
-    // Limpiamos el input para poder subir el mismo archivo otra vez si fuera necesario
-    e.target.value = ""; 
+         } catch (error) {
+             console.error(error);
+             alert("Error al leer el archivo. Asegúrate de que sea un JSON válido.");
+         }
+     };
+     reader.readAsText(archivo);
+     
+     // Limpiamos el input para poder subir el mismo archivo otra vez si fuera necesario
+     e.target.value = ""; 
  };
 
  // --- LÓGICA DE AMPLIACIÓN DE IMÁGENES ---
@@ -834,31 +830,33 @@ $("inputArchivoSeccion").onchange = (e) => {
  function ampliarImagen(src) {
      clearTimeout(timerCierreModal); // Cancela cualquier temporizador previo
      const modal = $("modalImagen");
-    const img = $("imgModal");
-    
-    img.src = src; // Carga la imagen pulsada
-    modal.style.display = "block"; // Muestra el modal
+     const img = $("imgModal");
+     
+     img.src = src; // Carga la imagen pulsada
+     modal.style.display = "block"; // Muestra el modal
 
-    // Temporizador: cerrar automáticamente tras 5 segundos
-    timerCierreModal = setTimeout(() => {
-        cerrarImagen(modal);
-    }, 5000); // 5000ms = 5 segundos
-}
+     // Temporizador: cerrar automáticamente tras 5 segundos
+     timerCierreModal = setTimeout(() => {
+         cerrarImagen(modal);
+     }, 5000); // 5000ms = 5 segundos
+ }
 
-function cerrarImagen(modal) {
-    clearTimeout(timerCierreModal); // Cancela el temporizador si cierran manualmente
-    modal.style.display = "none"; // Oculta el modal
-}
+ function cerrarImagen(modal) {
+     clearTimeout(timerCierreModal); // Cancela el temporizador si cierran manualmente
+     modal.style.display = "none"; // Oculta el modal
+ }
 
 
-// Inicio
-(function init(){
-    const secciones = cargarSecciones();
-    const actual = getSeccionActualId();
-    actualizarSelectorSecciones();
-    cargarDatosSeccion(actual);
-    actualizarIndicadorEspacio();
-})();
+ // Inicio
+ (function init(){
+     const secciones = cargarSecciones();
+     const actual = getSeccionActualId();
+     actualizarSelectorSecciones();
+     cargarDatosSeccion(actual);
+     actualizarIndicadorEspacio();
+     
+     capturarUbicacionGPS();
+ })();
 </script>
 
 <div id="modalImagen" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); cursor: pointer;" onclick="cerrarImagen(this)">
