@@ -221,31 +221,31 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
                 const centroX = margin + (colW - W) / 2;
                 doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, centroX, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
 
-		// --- AÑADIR ICONO GPS SOBRE LA FOTO ---
+		// --- NUEVO BLOQUE CORREGIDO PARA EL ICONO GPS ---
 		if (d.lat && d.lon) {
-		    // Tamaño del icono y margen desde la esquina de la foto
-		    const sIcon = 5; // 5mm x 5mm
-		    const padding = 1.5; // Margen de seguridad
+		    const sIcon = 6;      // Un pelín más grande para que quepa el texto
+		    const padding = 1.5; 
 
-		    // Calculamos la posición: Esquina Superior Derecha de la foto
 		    const iconX = centroX + W - sIcon - padding;
 		    const iconY = curY + padding;
 
-		    // Dibujamos un fondo circular blanco para dar contraste
+		    // 1. Dibujamos el fondo circular blanco
 		    doc.setFillColor(255, 255, 255);
-		    doc.circle(iconX + (sIcon / 2), iconY + (sIcon / 2), (sIcon / 2) + 0.5, 'F');
+		    doc.circle(iconX + (sIcon / 2), iconY + (sIcon / 2), (sIcon / 2), 'F');
 
-		    // Dibujamos el icono del globo (🌎 en Unicode o un Base64 embebido)
-		    // Como '🌎' Unicode no siempre funciona en todos los PDFs, 
-		    // usaremos el verde corporativo de tu informe para el texto.
-		    doc.setFontSize(10);
-		    doc.setTextColor(0, 121, 52); // El verde de tu informe (#007934)
-		    doc.text("📍", iconX + 0.5, iconY + 4); // Unicode estable
-		    doc.setTextColor(0, 0, 0); // Reset a negro
+		    // 2. En lugar de un emoji, ponemos texto compatible
+		    doc.setFontSize(6);              // Texto pequeñito
+		    doc.setFont("helvetica", "bold");
+		    doc.setTextColor(0, 121, 52);    // Tu verde corporativo
+		    
+		    // Centramos el texto "GPS" dentro del círculo
+		    doc.text("GPS", iconX + 1.2, iconY + 4); 
 
-		    // Creamos el ENLACE CLICKABLE invisible sobre el icono
+		    // 3. El enlace sigue funcionando igual
 		    const googleMapsUrl = `https://www.google.com/maps?q=${d.lat},${d.lon}`;
 		    doc.link(iconX, iconY, sIcon, sIcon, { url: googleMapsUrl });
+		    
+		    doc.setTextColor(0, 0, 0); // Reset a negro
 		}
 
 		curY += H + 5;
