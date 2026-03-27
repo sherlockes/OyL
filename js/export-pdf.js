@@ -82,7 +82,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
 
     // Línea 4: Imagen portada.jpg
     try {
-        const imgPortada = await cargarImagen('portada.jpg');
+        const imgPortada = await cargarImagen('images/portada.jpg');
         const altoPortada = 100;
         doc.addImage(imgPortada, 'JPEG', 0, y, pw, altoPortada); 
         y += altoPortada;
@@ -94,7 +94,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
     // Línea 5: Imagen logo.jpg
     y += 20; 
     try {
-        const imgLogo = await cargarImagen('logo.jpg');
+        const imgLogo = await cargarImagen('images/logo.jpg');
         const logoW = 60; 
         const logoH = 25; 
         doc.addImage(imgLogo, 'JPEG', (pw / 2) - (logoW / 2), y, logoW, logoH);
@@ -252,7 +252,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
     // Cargamos el logo una sola vez para el encabezado
     let imgLogoHeader = null;
     try {
-        imgLogoHeader = await cargarImagen('logo.jpg');
+        imgLogoHeader = await cargarImagen('images/logo.jpg');
     } catch (e) {
         console.warn("No se pudo cargar el logo para el encabezado");
     }
