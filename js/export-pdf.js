@@ -246,8 +246,47 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
         y += 5; 
     }
 
+    // --- 3. AÑADIR ENCABEZADOS CON LOGO (EXCEPTO PORTADA) ---
+    const totalPaginas = doc.internal.getNumberOfPages();
+    
+    // Cargamos el logo una sola vez para el encabezado
+    let imgLogoHeader = null;
+    try {
+        imgLogoHeader = await cargarImagen('logo.jpg');
+    } catch (e) {
+        console.warn("No se pudo cargar el logo para el encabezado");
+    }
+
+    for (let i = 2; i <= totalPaginas; i++) {
+        doc.setPage(i);
+        
+        // Estilo del encabezado
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.setFont("helvetica", "normal");
+        
+        // 1. Logo en pequeño (Lado izquierdo, arriba de la línea)
+        if (imgLogoHeader) {
+            // Coordenadas: x=margin, y=5, ancho=15, alto=proporcional (aprox 6)
+            doc.addImage(imgLogoHeader, 'JPEG', margin, 5, 15, 6);
+        }
+        
+        // 2. Nombre de sección (Al lado del logo)
+        doc.text(`INFORME O&L: ${nombreSeccion.toUpperCase()}`, margin + 18, 9.5);
+        
+        // 3. Información derecha (Fecha y Página)
+        const infoDerecha = `${fechaManual} | Pág. ${i} de ${totalPaginas}`;
+        doc.text(infoDerecha, pw - margin, 9.5, { align: "right" });
+
+        // 4. Línea divisoria sutil
+        doc.setDrawColor(220);
+        doc.setLineWidth(0.1);
+        doc.line(margin, 12, pw - margin, 12);
+    }
+
     // --- FINALIZACIÓN ---
-    doc.save(`${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.pdf`);
+    const nombreArchivo = `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.pdf`;
+    doc.save(nombreArchivo);
 }
 
 // Función auxiliar para cargar imágenes locales como Base64 (necesaria para jsPDF)
