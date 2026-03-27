@@ -221,31 +221,43 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
                 const centroX = margin + (colW - W) / 2;
                 doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, centroX, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
 
-		// --- NUEVO BLOQUE CORREGIDO PARA EL ICONO GPS ---
+		// --- NUEVO BLOQUE: PIN VECTORIAL (Sin errores de imagen) ---
 		if (d.lat && d.lon) {
-		    const sIcon = 6;      // Un pelín más grande para que quepa el texto
+		    const sIcon = 6;      // Tamaño total del icono
 		    const padding = 1.5; 
 
+		    // Posición: Esquina superior derecha de la foto
 		    const iconX = centroX + W - sIcon - padding;
 		    const iconY = curY + padding;
 
-		    // 1. Dibujamos el fondo circular blanco
-		    doc.setFillColor(255, 255, 255);
-		    doc.circle(iconX + (sIcon / 2), iconY + (sIcon / 2), (sIcon / 2), 'F');
+		    // 1. Sombra del pin (un circulito gris sutil debajo)
+		    doc.setFillColor(0, 0, 0, 0.15);
+		    doc.circle(iconX + 3, iconY + 6, 1.2, 'F');
 
-		    // 2. En lugar de un emoji, ponemos texto compatible
-		    doc.setFontSize(6);              // Texto pequeñito
-		    doc.setFont("helvetica", "bold");
-		    doc.setTextColor(0, 121, 52);    // Tu verde corporativo
+		    // 2. Cuerpo del Pin (Rojo Google: #EA4335)
+		    doc.setFillColor(234, 67, 53);
 		    
-		    // Centramos el texto "GPS" dentro del círculo
-		    doc.text("GPS", iconX + 1.2, iconY + 4); 
+		    // Dibujamos la cabeza del pin (Círculo superior)
+		    doc.circle(iconX + 3, iconY + 2.5, 2.5, 'F');
+		    
+		    // Dibujamos la punta del pin (Triángulo inferior)
+		    doc.triangle(
+			iconX + 0.8, iconY + 3.5,   // Esquina izquierda
+			iconX + 5.2, iconY + 3.5,   // Esquina derecha
+			iconX + 3, iconY + 6.5,     // Punta hacia abajo
+			'F'
+		    );
 
-		    // 3. El enlace sigue funcionando igual
+		    // 3. El "agujero" blanco central
+		    doc.setFillColor(255, 255, 255);
+		    doc.circle(iconX + 3, iconY + 2.5, 1, 'F');
+
+		    // 4. EL ENLACE (Corregido el error de la URL anterior)
 		    const googleMapsUrl = `https://www.google.com/maps?q=${d.lat},${d.lon}`;
 		    doc.link(iconX, iconY, sIcon, sIcon, { url: googleMapsUrl });
 		    
-		    doc.setTextColor(0, 0, 0); // Reset a negro
+		    // Resetear colores para el resto del PDF
+		    doc.setFillColor(0, 0, 0); 
 		}
 
 		curY += H + 5;
