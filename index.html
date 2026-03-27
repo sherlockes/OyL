@@ -96,11 +96,31 @@
     </div>
   </div>
 
-  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
-    <button id="btnExportarJSON" class="btn-primary" style="flex:1;">📤 Exportar</button>
-    <button id="btnImportarJSON" class="btn-primary" style="flex:1;">📥 Importar</button>
-    <input type="file" id="inputImportar" style="display:none" accept=".json">
-  </div>
+<div class="gestion-datos-container">
+    
+    <div class="card card-gestion">
+        <div class="card-header-mini">
+            <span>📄 ESTA SECCIÓN</span>
+        </div>
+        <div class="card-body-gestion">
+            <button id="btnExportarSeccion" class="btn-primary btn-full">📤 Exportar</button>
+            <button id="btnImportarSeccion" class="btn-outline btn-full">📥 Importar</button>
+            <input type="file" id="inputArchivoSeccion" style="display:none" accept=".json">
+        </div>
+    </div>
+
+    <div class="card card-gestion">
+        <div class="card-header-mini">
+            <span>📦 APP COMPLETA</span>
+        </div>
+        <div class="card-body-gestion">
+            <button id="btnExportarJSON" class="btn-primary btn-full">📤 Exportar</button>
+            <button id="btnImportarJSON" class="btn-outline btn-full">📥 Restaurar</button>
+            <input type="file" id="inputImportar" style="display:none" accept=".json">
+        </div>
+    </div>
+
+</div>
 
   <p style="margin-top:0; font-size:0.9rem; color:#555;">Borrar datos:</p>
     <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
@@ -437,44 +457,44 @@ $("btnConfirmarRenombrar").onclick = () => {
  // Cambio de sección
  $("seccionSelect").addEventListener("change",()=>{
      const id = $("seccionSelect").value;
-  setSeccionActualId(id);
-  cargarDatosSeccion(id);
-});
+     setSeccionActualId(id);
+     cargarDatosSeccion(id);
+ });
 
-// Borrar sección
-$("btnBorrarSeccion").onclick=()=>{
-  const secciones = cargarSecciones();
-  const actual = getSeccionActualId();
-  if(!confirm("¿Borrar la sección \""+actual+"\" y todas sus desviaciones?")) return;
-	 localStorage.removeItem(DATA_PREFIX + actual);
-  const nuevas = secciones.filter(s=>s!==actual);
-  if(nuevas.length === 0){
-    nuevas.push("seccion_1");
-    localStorage.setItem(DATA_PREFIX + "seccion_1", JSON.stringify([]));
-  }
-  guardarSecciones(nuevas);
-  setSeccionActualId(nuevas[0]);
-  actualizarSelectorSecciones();
-  cargarDatosSeccion(getSeccionActualId());
-};
+ // Borrar sección
+ $("btnBorrarSeccion").onclick=()=>{
+     const secciones = cargarSecciones();
+     const actual = getSeccionActualId();
+     if(!confirm("¿Borrar la sección \""+actual+"\" y todas sus desviaciones?")) return;
+     localStorage.removeItem(DATA_PREFIX + actual);
+     const nuevas = secciones.filter(s=>s!==actual);
+     if(nuevas.length === 0){
+	 nuevas.push("seccion_1");
+	 localStorage.setItem(DATA_PREFIX + "seccion_1", JSON.stringify([]));
+     }
+     guardarSecciones(nuevas);
+     setSeccionActualId(nuevas[0]);
+     actualizarSelectorSecciones();
+     cargarDatosSeccion(getSeccionActualId());
+ };
 
-// Borrar todas las secciones
-$("btnBorrarTodas").onclick=()=>{
-  if(!confirm("¿Borrar TODAS las secciones y todas las desviaciones?")) return;
-  const secciones = cargarSecciones();
-  secciones.forEach(id=>{
-    localStorage.removeItem(DATA_PREFIX + id);
-  });
-  localStorage.removeItem(SECCIONES_KEY);
-  localStorage.removeItem(SECCION_ACTUAL_KEY);
-  const lista = ["seccion_1"];
-  guardarSecciones(lista);
-  setSeccionActualId("seccion_1");
-  desviaciones = [];
-  editIndex = null;
-  actualizarSelectorSecciones();
-  cargarDatosSeccion("seccion_1");
-};
+ // Borrar todas las secciones
+ $("btnBorrarTodas").onclick=()=>{
+     if(!confirm("¿Borrar TODAS las secciones y todas las desviaciones?")) return;
+     const secciones = cargarSecciones();
+     secciones.forEach(id=>{
+	 localStorage.removeItem(DATA_PREFIX + id);
+     });
+     localStorage.removeItem(SECCIONES_KEY);
+     localStorage.removeItem(SECCION_ACTUAL_KEY);
+     const lista = ["seccion_1"];
+     guardarSecciones(lista);
+     setSeccionActualId("seccion_1");
+     desviaciones = [];
+     editIndex = null;
+     actualizarSelectorSecciones();
+     cargarDatosSeccion("seccion_1");
+ };
 
 // Resumen
 function resumen(grupos){
@@ -615,10 +635,44 @@ $("btnExportarJSON").onclick = () => {
     a.href = url;
     a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
     a.click();
-};
+ };
 
-// IMPORTAR (RESTAURAR)
-$("btnImportarJSON").onclick = () => $("inputImportar").click();
+// Exportar solo la sección actual en formato JSON
+$("btnExportarSeccion").onclick = () => {
+    const seccionId = getSeccionActualId(); // Obtenemos el nombre de la sección actual
+    
+    if (!desviaciones || desviaciones.length === 0) {
+        alert("No hay datos en esta sección para exportar.");
+        return;
+    }
+
+    // Estructuramos el objeto de exportación
+    const datosAExportar = {
+        tipo: "OYL_SECTION_EXPORT",
+        version: "2.0",
+        nombreSeccion: seccionId,
+        fechaExportacion: new Date().toISOString(),
+        datos: desviaciones // 'desviaciones' es tu array global con los datos actuales
+    };
+
+    // Crear el archivo para descargar
+    const dataStr = JSON.stringify(datosAExportar, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    const fechaCompacta = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+ };
+
+ // IMPORTAR (RESTAURAR)
+ $("btnImportarJSON").onclick = () => $("inputImportar").click();
 
 $("inputImportar").onchange = (e) => {
     const archivo = e.target.files[0];
@@ -643,13 +697,73 @@ $("inputImportar").onchange = (e) => {
     lector.readAsText(archivo);
 };
 
+ // 1. Al hacer clic en el botón, disparamos el selector de archivos oculto
+$("btnImportarSeccion").onclick = () => {
+    $("inputArchivoSeccion").click();
+};
 
-// --- LÓGICA DE AMPLIACIÓN DE IMÁGENES ---
-let timerCierreModal; // Variable para el temporizador
+// 2. Cuando el usuario selecciona un archivo...
+$("inputArchivoSeccion").onchange = (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
 
-function ampliarImagen(src) {
-    clearTimeout(timerCierreModal); // Cancela cualquier temporizador previo
-    const modal = $("modalImagen");
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const contenido = JSON.parse(event.target.result);
+
+            // Validamos que sea un archivo de sección y no un backup general
+            if (contenido.tipo !== "OYL_SECTION_EXPORT") {
+                alert("Este archivo no es una exportación de sección válida.");
+                return;
+            }
+
+            let nombreSugerido = contenido.nombreSeccion;
+            let secciones = cargarSecciones();
+
+            // Si la sección ya existe, preguntamos si quiere sobrescribir o renombrar
+            if (secciones.includes(nombreSugerido)) {
+                const confirmacion = confirm(`La sección "${nombreSugerido}" ya existe. ¿Quieres sobrescribir los datos actuales? \n(Aceptar: Sobrescribir / Cancelar: Importar con otro nombre)`);
+                
+                if (!confirmacion) {
+                    const nuevoNombre = prompt("Introduce un nuevo nombre para esta sección:", nombreSugerido + "_Copia");
+                    if (!nuevoNombre) return; // Canceló todo
+                    nombreSugerido = nuevoNombre.trim();
+                }
+            }
+
+            // --- GUARDADO DE DATOS ---
+            // Guardamos las desviaciones en el localStorage
+            localStorage.setItem(DATA_PREFIX + nombreSugerido, JSON.stringify(contenido.datos));
+
+            // Si es una sección nueva, la añadimos a la lista global de secciones
+            if (!secciones.includes(nombreSugerido)) {
+                secciones.push(nombreSugerido);
+                guardarSecciones(secciones);
+            }
+
+            // Cambiamos a la sección recién importada y recargamos
+            setSeccionActualId(nombreSugerido);
+            alert("Sección '" + nombreSugerido + "' importada correctamente.");
+            window.location.reload();
+
+        } catch (error) {
+            console.error(error);
+            alert("Error al leer el archivo. Asegúrate de que sea un JSON válido.");
+        }
+    };
+    reader.readAsText(archivo);
+    
+    // Limpiamos el input para poder subir el mismo archivo otra vez si fuera necesario
+    e.target.value = ""; 
+ };
+
+ // --- LÓGICA DE AMPLIACIÓN DE IMÁGENES ---
+ let timerCierreModal; // Variable para el temporizador
+
+ function ampliarImagen(src) {
+     clearTimeout(timerCierreModal); // Cancela cualquier temporizador previo
+     const modal = $("modalImagen");
     const img = $("imgModal");
     
     img.src = src; // Carga la imagen pulsada
