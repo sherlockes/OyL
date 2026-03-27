@@ -61,6 +61,10 @@
 <label>Foto</label>
 <input type="file" id="foto" accept="image/*" capture="environment">
 
+<div id="statusGPS" style="font-size: 11px; margin-top: 15px; margin-bottom: -10px; color: #666; text-align: center; font-weight: bold;">
+    📡 Esperando señal GPS...
+</div>
+
 <button type="submit" class="btn-primary" id="btnGuardar">Añadir desviación</button>
 <button type="button" class="btn-secondary" id="btnCancelarEdicion" style="display:none;">Cancelar edición</button>
 </form>
@@ -150,41 +154,47 @@
      "Zonas de paso y comunes","Señalización y comunicación","Residuos"
  ];
 
- function capturarUbicacionGPS() {
-     latitudActual = null;
-     longitudActual = null;
+function capturarUbicacionGPS() {
+    const statusDiv = document.getElementById("statusGPS");
+    latitudActual = null;
+    longitudActual = null;
+    
+    if (statusDiv) {
+        statusDiv.innerHTML = "📡 Buscando satélites...";
+        statusDiv.style.color = "#666";
+    }
 
-     if (!("geolocation" in navigator)) {
-         alert("Tu navegador no soporta GPS");
-         return;
-     }
+    if (!("geolocation" in navigator)) {
+        if (statusDiv) statusDiv.innerHTML = "❌ GPS no soportado";
+        return;
+    }
 
-     // Usamos watchPosition en lugar de getCurrentPosition para que sea más rápido al guardar
-     navigator.geolocation.getCurrentPosition(
-         (pos) => {
-             latitudActual = pos.coords.latitude;
-             longitudActual = pos.coords.longitude;
-             console.log("📍 GPS capturado con éxito");
-         },
-         (err) => {
-             // Esto te dirá exactamente por qué falla
-             let mensaje = "Error GPS: ";
-             switch(err.code) {
-                 case err.PERMISSION_DENIED: mensaje += "No diste permiso."; break;
-                 case err.POSITION_UNAVAILABLE: mensaje += "Ubicación no disponible (¿tienes el GPS del móvil encendido?)."; break;
-                 case err.TIMEOUT: mensaje += "Tiempo de espera agotado."; break;
-                 default: mensaje += "Error desconocido."; break;
-             }
-             console.warn(mensaje);
-             // Descomenta la línea de abajo solo para probar en el móvil:
-             alert(mensaje); 
-         },
-         { 
-             enableHighAccuracy: true, // Fuerza el uso de GPS real, no solo WiFi
-             timeout: 10000,           // Le damos 10 segundos
-             maximumAge: 0             // No queremos posiciones antiguas de caché
-         }
-     );
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            latitudActual = pos.coords.latitude;
+            longitudActual = pos.coords.longitude;
+            console.log("📍 GPS OK:", latitudActual, longitudActual);
+            
+            if (statusDiv) {
+                statusDiv.innerHTML = "✅ Ubicación capturada con éxito";
+                statusDiv.style.color = "#007934"; // Verde
+            }
+        },
+        (err) => {
+            console.warn("Error GPS:", err.message);
+            if (statusDiv) {
+                statusDiv.style.color = "#d32f2f"; // Rojo
+                if (err.code === 1) statusDiv.innerHTML = "❌ Permiso denegado";
+                else if (err.code === 3) statusDiv.innerHTML = "❌ Tiempo agotado (GPS débil)";
+                else statusDiv.innerHTML = "❌ Error al obtener ubicación";
+            }
+        },
+        { 
+            enableHighAccuracy: true, 
+            timeout: 8000, // Le damos 8 segundos para fijar posición
+            maximumAge: 0 
+        }
+    );
  }
 
  function cargarSecciones(){
