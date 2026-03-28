@@ -1,3 +1,6 @@
+/**
+ * CONFIGURACIÓN GLOBAL DEL PDF
+ */
 const PDF_CONFIG = {
     MARGEN: 15,
     COMPRESION_PDF: true, // Esto debe estar en true
