@@ -25,13 +25,22 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
 	// Si falla, el informe se generará sin portada
     }
 
+    let logoBuffer = null;
+    try {
+	// Intentamos cargar el logo
+	logoBuffer = await imageToBuffer("images/logo.jpg");
+    } catch (e) {
+	console.error("Error cargando el logo:", e);
+	// Si falla, el informe se generará sin portada
+    }
+
     const seccionesDoc = [];
 
     // 1. Título Principal
     seccionesDoc.push(new Paragraph({
         children: [new TextRun({ text: "INFORME DE ORDEN Y LIMPIEZA", bold: true, size: 50, color: "007934" })],
         alignment: AlignmentType.LEFT,
-        spacing: { before: 800, after: 600 }
+        spacing: { before: 800, after: 1500 }
     }));
 
     // 2. Línea 1: SECCIÓN | FECHA
@@ -42,7 +51,7 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
             new TextRun({ text: `${fechaManual.toUpperCase()}`, bold: true, size: 32, color: "007934" }),
         ],
         tabStops: [{ type: TabStopType.RIGHT, position: 10500 }],
-        spacing: { after: 300 }
+        spacing: { after: 600 }
     }));
 
     // --- C. Línea 2: CUADRO VERDE (Sangrado Total de Borde a Borde) ---
@@ -97,38 +106,87 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
 
     seccionesDoc.push(cuadroResumen);
 
-    // --- D. PORTADA (Sangrado Total de Borde a Borde) ---
-    if (portadaBuffer) {
-	seccionesDoc.push(new Paragraph({
+// --- PORTADA (Sangrado Total Simulado de Borde a Borde) ---
+if (portadaBuffer) {
+
+    // El ancho total del papel A4 en puntos ≈ 595
+    // Pero para que Word ignore márgenes, hay que hacerlo más grande:
+    const ANCHO_FORZADO = 800; // Más grande que 595
+
+    seccionesDoc.push(new Paragraph({
+        children: [
+            new ImageRun({
+                data: portadaBuffer,
+                transformation: {
+                    width: ANCHO_FORZADO,
+                    height: 470 // Ajusta a tu imagen
+                }
+            })
+        ],
+
+        // Compensa margen izquierdo
+        indent: { left: -800, right: -800 },
+
+        // Que pegue al cuadro verde
+        spacing: { before: -0, after: 600 }
+    }));
+}
+
+// --- LOGO CENTRADO, SIN CAMBIAR SU TAMAÑO (transformación vacía obligatoria) ---
+if (logoBuffer) {
+
+    seccionesDoc.push(   new Paragraph({
             children: [
-		new ImageRun({
-                    data: portadaBuffer,
+                new ImageRun({
+                    data: logoBuffer,
                     transformation: {
-			// 595 puntos es el ancho exacto de un A4 (21cm)
-			width: 595, 
-			// Ajusta la altura según tu imagen para que no se vea estirada
-			height: 420 
-                    }
-		})
+                    width: 259,
+                    height: 158
+       }
+                  })
             ],
-            // Empujamos el párrafo hacia la izquierda para ignorar el margen de la página
-            // 720 twips es el margen "estrecho" que configuramos (1.27cm)
-            indent: { left: -720 }, 
-            // Eliminamos el espacio superior para que pegue con el cuadro verde
-            spacing: { before: 0, after: 600 } 
-	}));
-    }
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 350 }
+        })
+    );
+
+}
+
+
+// --- SALTO DE PÁGINA ---
+seccionesDoc.push(
+    new Paragraph({
+        children: [],
+        pageBreakBefore: true
+    })
+);
+
+
     
     // 4. Bucle de Desviaciones (2 Columnas)
-    for (const d of desviaciones) {
-        // Encabezado de Tipo
-        seccionesDoc.push(new Paragraph({
-            children: [new TextRun({ text: `TIPO: ${d.tipo}`, bold: true, color: "FFFFFF", size: 22 })],
-            shading: { fill: "007934" },
-            spacing: { before: 400, after: 100 },
-            indent: { left: 120 }
-        }));
+    // ✅ Agrupar las desviaciones por tipo
+const desviacionesPorTipo = {};
 
+for (const d of desviaciones) {
+    if (!desviacionesPorTipo[d.tipo]) {
+        desviacionesPorTipo[d.tipo] = [];
+    }
+    desviacionesPorTipo[d.tipo].push(d);
+}
+
+// ✅ Recorrer los tipos en orden alfabético
+for (const tipo of Object.keys(desviacionesPorTipo).sort()) {
+
+    // Encabezado de TIPO (se mantiene igual que antes)
+    seccionesDoc.push(new Paragraph({
+        children: [new TextRun({ text: `TIPO: ${tipo}`, bold: true, color: "FFFFFF", size: 22 })],
+        shading: { fill: "007934" },
+        spacing: { before: 400, after: 100 },
+        indent: { left: 20 }
+    }));
+
+    // ✅ Ahora recorremos las desviaciones SOLO de ese tipo
+    for (const d of desviacionesPorTipo[tipo]) {
         const leftCellChildren = [];
         if (d.foto) {
             const buffer = base64ToBuffer(d.foto);
@@ -136,7 +194,7 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
                 leftCellChildren.push(new Paragraph({
                     children: [new ImageRun({ data: buffer, transformation: { width: 320, height: 240 } })],
                     alignment: AlignmentType.CENTER,
-                    spacing: { before: 200, after: 200 }
+                    spacing: { before: 20, after: 100 }
                 }));
             }
         }
@@ -194,6 +252,7 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
             margin: { bottom: 400 }
         }));
     }
+}
 
     // 5. Configuración final y descarga
     const doc = new Document({
