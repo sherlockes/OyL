@@ -147,7 +147,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
             let maxW = colW - 2; 
             let r = img.width / img.height;
             let W = maxW, H = maxW / r;
-            if (H > 70) { H = 70; W = H * r; }
+            if (H > 60) { H = 60; W = H * r; }
             ok({ W, H });
         };
         img.src = base;
@@ -198,7 +198,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
             // 3. CÁLCULO DE ALTURA DE CELDA (MÁS AJUSTADO)
             let cellH = (internalPadding * 2); 
             if (H > 0) {
-                cellH += H + 2; // Foto + pequeño margen
+                cellH += H + 1; // Foto + margen mínimo
             }
             cellH += ubiH + gapSutil + descH; 
 
@@ -260,7 +260,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
 		    doc.setFillColor(0, 0, 0); 
 		}
 
-		curY += H + 5;
+		curY += H + 3;
             }
 
             // 7. INSERTAR TEXTOS
@@ -283,7 +283,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
             // Avanzar posición Y para la siguiente fila
             y += cellH; 
         }
-        y += 5; 
+        y += 3; 
     }
 
     // --- 3. AÑADIR ENCABEZADOS CON LOGO (EXCEPTO PORTADA) ---

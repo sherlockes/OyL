@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
 </head>
 
 <body>
@@ -196,73 +197,104 @@
      );
  }
 
- function cargarSecciones(){
-     let lista = [];
-     try{
-	 const raw = localStorage.getItem(SECCIONES_KEY);
+  async function migrarDatos() {
+      const migrado = await localforage.getItem("migracion_completada");
+      if (migrado) return;
+
+      console.log("🚀 Iniciando migración de localStorage a LocalForage...");
+      
+      // Migrar lista de secciones
+      const secciones = localStorage.getItem(SECCIONES_KEY);
+      if (secciones) {
+          await localforage.setItem(SECCIONES_KEY, JSON.parse(secciones));
+      }
+
+      // Migrar sección actual
+      const actual = localStorage.getItem(SECCION_ACTUAL_KEY);
+      if (actual) {
+          await localforage.setItem(SECCION_ACTUAL_KEY, actual);
+      }
+
+      // Migrar datos de cada sección
+      for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key.startsWith(DATA_PREFIX) && key !== SECCIONES_KEY && key !== SECCION_ACTUAL_KEY) {
+              const data = localStorage.getItem(key);
+              if (data) {
+                  await localforage.setItem(key, JSON.parse(data));
+              }
+          }
+      }
+
+      await localforage.setItem("migracion_completada", true);
+      console.log("✅ Migración completada.");
+  }
+
+  async function cargarSecciones(){
+      let lista = [];
+      try{
+	 const raw = await localforage.getItem(SECCIONES_KEY);
 	 if(raw){
-	     const parsed = JSON.parse(raw);
-	     if(Array.isArray(parsed)) lista = parsed;
+	     if(Array.isArray(raw)) lista = raw;
 	 }
-     }catch(e){}
-     if(lista.length === 0){
+      }catch(e){}
+      if(lista.length === 0){
 	 lista = ["seccion_1"];
-	 localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
-     }
-     return lista;
- }
+	 await localforage.setItem(SECCIONES_KEY, lista);
+      }
+      return lista;
+  }
 
- function guardarSecciones(lista){
-     localStorage.setItem(SECCIONES_KEY, JSON.stringify(lista));
- }
+  async function guardarSecciones(lista){
+      await localforage.setItem(SECCIONES_KEY, lista);
+  }
 
- function getSeccionActualId(){
-     let id = localStorage.getItem(SECCION_ACTUAL_KEY);
-     const secciones = cargarSecciones();
-     if(!id || !secciones.includes(id)){
+  async function getSeccionActualId(){
+      let id = await localforage.getItem(SECCION_ACTUAL_KEY);
+      const secciones = await cargarSecciones();
+      if(!id || !secciones.includes(id)){
 	 id = secciones[0];
-	 localStorage.setItem(SECCION_ACTUAL_KEY, id);
-     }
-     return id;
- }
+	 await localforage.setItem(SECCION_ACTUAL_KEY, id);
+      }
+      return id;
+  }
 
- function setSeccionActualId(id){
-     localStorage.setItem(SECCION_ACTUAL_KEY, id);
- }
+  async function setSeccionActualId(id){
+      await localforage.setItem(SECCION_ACTUAL_KEY, id);
+  }
 
- function cargarDatosSeccion(id){
-     desviaciones = [];
-     try{
-	 const raw = localStorage.getItem(DATA_PREFIX + id);
+  async function cargarDatosSeccion(id){
+      desviaciones = [];
+      try{
+	 const raw = await localforage.getItem(DATA_PREFIX + id);
 	 if(raw){
-	     const parsed = JSON.parse(raw);
-	     if(Array.isArray(parsed)) desviaciones = parsed;
+	     if(Array.isArray(raw)) desviaciones = raw;
 	 }
-     }catch(e){}
-     editIndex = null;
-     $("btnGuardar").textContent = "Añadir desviación";
-     $("btnCancelarEdicion").style.display = "none";
-     render();
- }
+      }catch(e){}
+      editIndex = null;
+      $("btnGuardar").textContent = "Añadir desviación";
+      $("btnCancelarEdicion").style.display = "none";
+      render();
+  }
 
- function guardarDatosSeccion(id){
-     localStorage.setItem(DATA_PREFIX + id, JSON.stringify(desviaciones));
-     actualizarIndicadorEspacio();
- }
+  async function guardarDatosSeccion(id){
+      await localforage.setItem(DATA_PREFIX + id, desviaciones);
+      await actualizarIndicadorEspacio();
+  }
 
- function actualizarSelectorSecciones(){
-     const secciones = cargarSecciones();
-     const actual = getSeccionActualId();
-     const sel = $("seccionSelect");
-     sel.innerHTML = "";
-     secciones.forEach(id=>{
+  async function actualizarSelectorSecciones(){
+      const secciones = await cargarSecciones();
+      const actual = await getSeccionActualId();
+      const sel = $("seccionSelect");
+      sel.innerHTML = "";
+      secciones.forEach(id=>{
 	 const opt = document.createElement("option");
 	 opt.value = id;
 	 opt.textContent = id;
 	 if(id === actual) opt.selected = true;
 	 sel.appendChild(opt);
-     });
- }
+      });
+  }
 
  // Reducir imagen
  async function reducir(file){
@@ -380,7 +412,7 @@
      $("foto").value = ""; 
      $("tipo").value = "";
 
-     guardarDatosSeccion(getSeccionActualId());
+     await guardarDatosSeccion(await getSeccionActualId());
      render();
      console.log("✅ Guardado automático");
  }
@@ -422,12 +454,12 @@
      $("formDesv").scrollIntoView({ behavior: 'smooth', block: 'start' });
  }
 
- function borrar(i){
-     if(!confirm("¿Seguro que quieres borrar esta desviación?"))return;
-     desviaciones.splice(i,1);
-     guardarDatosSeccion(getSeccionActualId());
-     render();
- }
+  async function borrar(i){
+      if(!confirm("¿Seguro que quieres borrar esta desviación?"))return;
+      desviaciones.splice(i,1);
+      await guardarDatosSeccion(await getSeccionActualId());
+      render();
+  }
 
  $("btnCancelarEdicion").onclick=()=>{
      editIndex=null;
@@ -438,7 +470,7 @@
  };
 
  // Nueva sección
- $("btnNuevaSeccion").onclick = () => {
+ $("btnNuevaSeccion").onclick = async () => {
      // 1. Actualizamos el mensaje de ayuda
      let nombre = prompt("Nombre de la nueva sección (puedes usar espacios y tildes):");
      if (!nombre) return;
@@ -456,25 +488,25 @@
     return;
   }
 
-  let secciones = cargarSecciones();
+  let secciones = await cargarSecciones();
   if (secciones.includes(nombre)) {
     alert("Ya existe una sección con ese nombre.");
     return;
   }
 
   secciones.push(nombre);
-  guardarSecciones(secciones);
-  setSeccionActualId(nombre);
+  await guardarSecciones(secciones);
+  await setSeccionActualId(nombre);
   desviaciones = [];
   editIndex = null;
-  actualizarSelectorSecciones();
-  cargarDatosSeccion(nombre);
+  await actualizarSelectorSecciones();
+  await cargarDatosSeccion(nombre);
 };
 
 // Renombrar sección
 // Mostrar/Ocultar el panel de renombrado
-$("btnMostrarRenombrar").onclick = () => {
-    $("inputNuevoNombre").value = getSeccionActualId();
+ $("btnMostrarRenombrar").onclick = async () => {
+    $("inputNuevoNombre").value = await getSeccionActualId();
     $("contenedorRenombrar").style.display = "block";
     $("btnMostrarRenombrar").style.display = "none";
 };
@@ -485,81 +517,81 @@ $("btnCancelarRenombrar").onclick = () => {
 };
 
 // Lógica de guardado real
-$("btnConfirmarRenombrar").onclick = () => {
-    const actual = getSeccionActualId();
-    let nuevo = $("inputNuevoNombre").value;
+ $("btnConfirmarRenombrar").onclick = async () => {
+     const actual = await getSeccionActualId();
+     let nuevo = $("inputNuevoNombre").value;
 
-    if (!nuevo) return;
+     if (!nuevo) return;
 
-    // Aplicamos la misma lógica permisiva que en la creación
-    nuevo = nuevo.trim().replace(/[\\/:*?"<>|]/g, "");
+     // Aplicamos la misma lógica permisiva que en la creación
+     nuevo = nuevo.trim().replace(/[\\/:*?"<>|]/g, "");
 
-     if (!nuevo || nuevo === actual) {
-         $("btnCancelarRenombrar").click();
-         return;
-     }
+      if (!nuevo || nuevo === actual) {
+          $("btnCancelarRenombrar").click();
+          return;
+      }
 
-     let secciones = cargarSecciones();
-     if (secciones.includes(nuevo)) {
-         alert("Ese nombre ya existe.");
-         return;
-     }
+      let secciones = await cargarSecciones();
+      if (secciones.includes(nuevo)) {
+          alert("Ese nombre ya existe.");
+          return;
+      }
 
-     // El resto del código de mover datos y actualizar secciones se mantiene igual...
-     const datos = localStorage.getItem(DATA_PREFIX + actual);
-     if (datos !== null) {
-         localStorage.setItem(DATA_PREFIX + nuevo, datos);
-         localStorage.removeItem(DATA_PREFIX + actual);
-     }
+      // El resto del código de mover datos y actualizar secciones se mantiene igual...
+      const datos = await localforage.getItem(DATA_PREFIX + actual);
+      if (datos !== null) {
+          await localforage.setItem(DATA_PREFIX + nuevo, datos);
+          await localforage.removeItem(DATA_PREFIX + actual);
+      }
 
-     secciones = secciones.map(id => id === actual ? nuevo : id);
-     guardarSecciones(secciones);
-     setSeccionActualId(nuevo);
+      secciones = secciones.map(id => id === actual ? nuevo : id);
+      await guardarSecciones(secciones);
+      await setSeccionActualId(nuevo);
 
-     window.location.reload();
- };
+      window.location.reload();
+  };
 
  // Cambio de sección
- $("seccionSelect").addEventListener("change",()=>{
-     const id = $("seccionSelect").value;
-     setSeccionActualId(id);
-     cargarDatosSeccion(id);
- });
+  $("seccionSelect").addEventListener("change",async ()=>{
+      const id = $("seccionSelect").value;
+      await setSeccionActualId(id);
+      await cargarDatosSeccion(id);
+  });
 
  // Borrar sección
- $("btnBorrarSeccion").onclick=()=>{
-     const secciones = cargarSecciones();
-     const actual = getSeccionActualId();
-     if(!confirm("¿Borrar la sección \""+actual+"\" y todas sus desviaciones?")) return;
-     localStorage.removeItem(DATA_PREFIX + actual);
-     const nuevas = secciones.filter(s=>s!==actual);
-     if(nuevas.length === 0){
-	 nuevas.push("seccion_1");
-	 localStorage.setItem(DATA_PREFIX + "seccion_1", JSON.stringify([]));
-     }
-     guardarSecciones(nuevas);
-     setSeccionActualId(nuevas[0]);
-     actualizarSelectorSecciones();
-     cargarDatosSeccion(getSeccionActualId());
- };
+  $("btnBorrarSeccion").onclick=async ()=>{
+      const secciones = await cargarSecciones();
+      const actual = await getSeccionActualId();
+      if(!confirm("¿Borrar la sección \""+actual+"\" y todas sus desviaciones?")) return;
+      await localforage.removeItem(DATA_PREFIX + actual);
+      const nuevas = secciones.filter(s=>s!==actual);
+      if(nuevas.length === 0){
+ 	 nuevas.push("seccion_1");
+ 	 await localforage.setItem(DATA_PREFIX + "seccion_1", []);
+      }
+      await guardarSecciones(nuevas);
+      await setSeccionActualId(nuevas[0]);
+      await actualizarSelectorSecciones();
+      await cargarDatosSeccion(await getSeccionActualId());
+  };
 
  // Borrar todas las secciones
- $("btnBorrarTodas").onclick=()=>{
-     if(!confirm("¿Borrar TODAS las secciones y todas las desviaciones?")) return;
-     const secciones = cargarSecciones();
-     secciones.forEach(id=>{
-	 localStorage.removeItem(DATA_PREFIX + id);
-     });
-     localStorage.removeItem(SECCIONES_KEY);
-     localStorage.removeItem(SECCION_ACTUAL_KEY);
-     const lista = ["seccion_1"];
-     guardarSecciones(lista);
-     setSeccionActualId("seccion_1");
-     desviaciones = [];
-     editIndex = null;
-     actualizarSelectorSecciones();
-     cargarDatosSeccion("seccion_1");
- };
+  $("btnBorrarTodas").onclick=async ()=>{
+      if(!confirm("¿Borrar TODAS las secciones y todas las desviaciones?")) return;
+      const secciones = await cargarSecciones();
+      for (const id of secciones) {
+          await localforage.removeItem(DATA_PREFIX + id);
+      }
+      await localforage.removeItem(SECCIONES_KEY);
+      await localforage.removeItem(SECCION_ACTUAL_KEY);
+      const lista = ["seccion_1"];
+      await guardarSecciones(lista);
+      await setSeccionActualId("seccion_1");
+      desviaciones = [];
+      editIndex = null;
+      await actualizarSelectorSecciones();
+      await cargarDatosSeccion("seccion_1");
+  };
 
  // Resumen
  function resumen(grupos){
@@ -623,13 +655,12 @@ $("btnConfirmarRenombrar").onclick = () => {
  };
 
 // Exportar DOCX - ESTRATEGIA PDF CORREGIDA
-$("btnDescargarDOCX").onclick = () => {
-    const actual = getSeccionActualId();
+$("btnDescargarDOCX").onclick = async () => {
+    const actual = await getSeccionActualId();
     if (!actual) return alert("No hay sección seleccionada");
 
     const nombreSeccion = actual.replace(/_/g, " ");
-    const datosRaw = localStorage.getItem(DATA_PREFIX + actual);
-    const datos = datosRaw ? JSON.parse(datosRaw) : [];
+    const datos = await localforage.getItem(DATA_PREFIX + actual) || [];
 
     if (datos.length === 0) return alert("No hay datos en esta sección");
 
@@ -654,144 +685,143 @@ $("btnDescargarDOCX").onclick = () => {
  };
 
 
- // Control de versiones y carga automática de CSS y JS
- (function() {
-     const ahora = new Date();
-     const v = ahora.getFullYear() + 
-              ("0" + (ahora.getMonth() + 1)).slice(-2) + 
-              ("0" + ahora.getDate()).slice(-2) + 
-              ("0" + ahora.getHours()).slice(-2) + 
-              ("0" + ahora.getMinutes()).slice(-2) + 
-              ("0" + ahora.getSeconds()).slice(-2);
+     // Inicialización de la App con LocalForage
+     (async function() {
+         await migrarDatos();
+         await actualizarSelectorSecciones();
+         const actual = await getSeccionActualId();
+         await cargarDatosSeccion(actual);
+         await actualizarIndicadorEspacio();
 
-     // --- CARGA DEL CSS ---
-     const link = document.createElement('link');
-     link.rel = 'stylesheet';
-     link.type = 'text/css';
-     link.href = `css/style.css?v=${v}`;
-     document.head.appendChild(link);
+         const ahora = new Date();
+         const v = ahora.getFullYear() + 
+                  ("0" + (ahora.getMonth() + 1)).slice(-2) + 
+                  ("0" + ahora.getDate()).slice(-2) + 
+                  ("0" + ahora.getHours()).slice(-2) + 
+                  ("0" + ahora.getMinutes()).slice(-2) + 
+                  ("0" + ahora.getSeconds()).slice(-2);
 
-     // --- CARGA DE LOS SCRIPTS ---
-     const scripts = ["js/export-pdf.js", "js/export-html.js", "js/export-docx.js"];
-     scripts.forEach(src => {
-	 const s = document.createElement('script');
-	 s.src = `${src}?v=${v}`;
-	 s.async = false; 
-	 document.head.appendChild(s);
-     });
+         // --- CARGA DEL CSS ---
+         const link = document.createElement('link');
+         link.rel = 'stylesheet';
+         link.type = 'text/css';
+         link.href = `css/style.css?v=${v}`;
+         document.head.appendChild(link);
 
-     console.log("🚀 Sistema cargado con versión: " + v);
-     
-     // Ejecutamos el render inicial por si ya había datos en localStorage
-     if(typeof render === "function") render();
- })();
+         // --- CARGA DE LOS SCRIPTS ---
+         const scripts = ["js/export-pdf.js", "js/export-html.js", "js/export-docx.js"];
+         scripts.forEach(src => {
+             const s = document.createElement('script');
+             s.src = `${src}?v=${v}`;
+             s.async = false; 
+             document.head.appendChild(s);
+         });
+
+         console.log("🚀 Sistema cargado con LocalForage - Versión: " + v);
+     })();
 
  // --- FUNCIONES DE MEMORIA Y BACKUP PARA V1.9 ---
 
- function actualizarIndicadorEspacio() {
-     let totalCaracteres = 0;
-     for (let i = 0; i < localStorage.length; i++) {
-         let key = localStorage.key(i);
-         totalCaracteres += (localStorage.getItem(key).length + key.length);
-     }
-     const limite = 5 * 1024 * 1024; // 5MB
-     const porcentaje = Math.min((totalCaracteres / limite) * 100, 100).toFixed(1);
-     const mbOcupados = (totalCaracteres / (1024 * 1024)).toFixed(2);
+  async function actualizarIndicadorEspacio() {
+      let totalBytes = 0;
+      await localforage.iterate((value, key) => {
+          totalBytes += (JSON.stringify(value).length + key.length);
+      });
+      
+      const limite = 50 * 1024 * 1024; // Aumentamos el límite visual a 50MB
+      const porcentaje = Math.min((totalBytes / limite) * 100, 100).toFixed(1);
+      const mbOcupados = (totalBytes / (1024 * 1024)).toFixed(2);
 
-     if($("espacioTexto")){
-         $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
-         $("espacioMB").textContent = `${mbOcupados} / 5 MB`;
-         $("barraProgreso").style.width = porcentaje + "%";
-         $("barraProgreso").style.background = porcentaje > 80 ? "#d32f2f" : (porcentaje > 50 ? "#f57c00" : "#1976d2");
-     }
- }
+      if($("espacioTexto")){
+          $("espacioTexto").textContent = `Espacio ocupado: ${porcentaje}%`;
+          $("espacioMB").textContent = `${mbOcupados} / 50 MB`;
+          $("barraProgreso").style.width = porcentaje + "%";
+          $("barraProgreso").style.background = porcentaje > 80 ? "#d32f2f" : (porcentaje > 50 ? "#f57c00" : "#1976d2");
+      }
+  }
 
  // EXPORTAR (BACKUP)
- $("btnExportarJSON").onclick = () => {
-     const backup = {
-         app: "Informe O&L v1.9",
-         fecha: new Date().toISOString(),
-         secciones: JSON.parse(localStorage.getItem("desviaciones_v1_9_secciones") || '[]'),
-         datos: {}
-     };
+  $("btnExportarJSON").onclick = async () => {
+      const backup = {
+          app: "Informe O&L v1.9 (LocalForage)",
+          fecha: new Date().toISOString(),
+          secciones: await localforage.getItem(SECCIONES_KEY) || [],
+          datos: {}
+      };
 
-     // Buscamos todas las claves que empiecen por tu prefijo real
-     for (let i = 0; i < localStorage.length; i++) {
-         const clave = localStorage.key(i);
-         if (clave.startsWith("desviaciones_v1_9_") && clave !== "desviaciones_v1_9_secciones" && clave !== "desviaciones_v1_9_seccion_actual") {
-             try {
-                 backup.datos[clave] = JSON.parse(localStorage.getItem(clave));
-             } catch (e) {}
-         }
-     }
+      await localforage.iterate((value, key) => {
+          if (key.startsWith(DATA_PREFIX) && key !== SECCIONES_KEY && key !== SECCION_ACTUAL_KEY) {
+              backup.datos[key] = value;
+          }
+      });
 
-     const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
-     const url = URL.createObjectURL(blob);
-     const a = document.createElement("a");
-     a.href = url;
-     a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
-     a.click();
- };
+      const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+  };
 
  // Exportar solo la sección actual en formato JSON
- $("btnExportarSeccion").onclick = () => {
-     const seccionId = getSeccionActualId(); // Obtenemos el nombre de la sección actual
-     
-     if (!desviaciones || desviaciones.length === 0) {
-         alert("No hay datos en esta sección para exportar.");
-         return;
-     }
+  $("btnExportarSeccion").onclick = async () => {
+      const seccionId = await getSeccionActualId(); 
+      
+      if (!desviaciones || desviaciones.length === 0) {
+          alert("No hay datos en esta sección para exportar.");
+          return;
+      }
 
-     // Estructuramos el objeto de exportación
-     const datosAExportar = {
-         tipo: "OYL_SECTION_EXPORT",
-         version: "2.0",
-         nombreSeccion: seccionId,
-         fechaExportacion: new Date().toISOString(),
-         datos: desviaciones // 'desviaciones' es tu array global con los datos actuales
-     };
+      // Estructuramos el objeto de exportación
+      const datosAExportar = {
+          tipo: "OYL_SECTION_EXPORT",
+          version: "2.0",
+          nombreSeccion: seccionId,
+          fechaExportacion: new Date().toISOString(),
+          datos: desviaciones 
+      };
 
-     // Crear el archivo para descargar
-     const dataStr = JSON.stringify(datosAExportar, null, 2);
-     const blob = new Blob([dataStr], { type: "application/json" });
-     const url = URL.createObjectURL(blob);
-     
-     const link = document.createElement("a");
-     const fechaCompacta = new Date().toISOString().slice(0, 10);
-     link.href = url;
-     link.download = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
-     
-     document.body.appendChild(link);
-     link.click();
-     document.body.removeChild(link);
-     URL.revokeObjectURL(url);
- };
+      // Crear el archivo para descargar
+      const dataStr = JSON.stringify(datosAExportar, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      const fechaCompacta = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+  };
 
  // IMPORTAR (RESTAURAR)
- $("btnImportarJSON").onclick = () => $("inputImportar").click();
+  $("btnImportarJSON").onclick = () => $("inputImportar").click();
 
- $("inputImportar").onchange = (e) => {
-     const archivo = e.target.files[0];
-     if (!archivo) return;
-     const lector = new FileReader();
-     lector.onload = (event) => {
-         try {
-             const backup = JSON.parse(event.target.result);
-             if (!backup.secciones || !backup.datos) throw new Error("Archivo no válido");
-             
-             if (confirm("Se borrarán los datos actuales para cargar el backup. ¿Continuar?")) {
-                 localStorage.clear();
-                 localStorage.setItem("desviaciones_v1_9_secciones", JSON.stringify(backup.secciones));
-                 for (const clave in backup.datos) {
-                     localStorage.setItem(clave, JSON.stringify(backup.datos[clave]));
-                 }
-                 alert("✅ Importación completada.");
-                 location.reload();
-             }
-         } catch (err) { alert("Error: " + err.message); }
-     };
-     lector.readAsText(archivo);
- };
+  $("inputImportar").onchange = (e) => {
+      const archivo = e.target.files[0];
+      if (!archivo) return;
+      const lector = new FileReader();
+      lector.onload = async (event) => {
+          try {
+              const backup = JSON.parse(event.target.result);
+              if (!backup.secciones || !backup.datos) throw new Error("Archivo no válido");
+              
+              if (confirm("Se borrarán los datos actuales para cargar el backup. ¿Continuar?")) {
+                  await localforage.clear();
+                  await localforage.setItem(SECCIONES_KEY, backup.secciones);
+                  for (const clave in backup.datos) {
+                      await localforage.setItem(clave, backup.datos[clave]);
+                  }
+                  alert("✅ Importación completada.");
+                  location.reload();
+              }
+          } catch (err) { alert("Error: " + err.message); }
+      };
+      lector.readAsText(archivo);
+  };
 
  // 1. Al hacer clic en el botón, disparamos el selector de archivos oculto
  $("btnImportarSeccion").onclick = () => {
@@ -799,12 +829,12 @@ $("btnDescargarDOCX").onclick = () => {
  };
 
  // 2. Cuando el usuario selecciona un archivo...
- $("inputArchivoSeccion").onchange = (e) => {
+ $("inputArchivoSeccion").onchange = async (e) => {
      const archivo = e.target.files[0];
      if (!archivo) return;
 
      const reader = new FileReader();
-     reader.onload = (event) => {
+     reader.onload = async (event) => {
          try {
              const contenido = JSON.parse(event.target.result);
 
@@ -815,7 +845,7 @@ $("btnDescargarDOCX").onclick = () => {
              }
 
              let nombreSugerido = contenido.nombreSeccion;
-             let secciones = cargarSecciones();
+             let secciones = await cargarSecciones();
 
              // Si la sección ya existe, preguntamos si quiere sobrescribir o renombrar
              if (secciones.includes(nombreSugerido)) {
@@ -829,17 +859,17 @@ $("btnDescargarDOCX").onclick = () => {
              }
 
              // --- GUARDADO DE DATOS ---
-             // Guardamos las desviaciones en el localStorage
-             localStorage.setItem(DATA_PREFIX + nombreSugerido, JSON.stringify(contenido.datos));
+             // Guardamos las desviaciones en el localforage
+             await localforage.setItem(DATA_PREFIX + nombreSugerido, contenido.datos);
 
              // Si es una sección nueva, la añadimos a la lista global de secciones
              if (!secciones.includes(nombreSugerido)) {
                  secciones.push(nombreSugerido);
-                 guardarSecciones(secciones);
+                 await guardarSecciones(secciones);
              }
 
              // Cambiamos a la sección recién importada y recargamos
-             setSeccionActualId(nombreSugerido);
+             await setSeccionActualId(nombreSugerido);
              alert("Sección '" + nombreSugerido + "' importada correctamente.");
              window.location.reload();
 
@@ -878,14 +908,8 @@ $("btnDescargarDOCX").onclick = () => {
 
 
  // Inicio
- (function init(){
-     const secciones = cargarSecciones();
-     const actual = getSeccionActualId();
-     actualizarSelectorSecciones();
-     cargarDatosSeccion(actual);
-     actualizarIndicadorEspacio();
-     
-     capturarUbicacionGPS();
+ (async function init(){
+     await capturarUbicacionGPS();
  })();
 </script>
 
