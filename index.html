@@ -606,18 +606,27 @@ $("btnCancelarRenombrar").onclick = () => {
  }
 
  // Exportar HTML
- $("btnDescargarHTML").onclick = () => {
+ $("btnDescargarHTML").onclick = async () => {
      if (desviaciones.length === 0) {
          alert("No hay datos para exportar");
          return;
      }
 
-     // Capturamos la sección seleccionada
+     // Solicitamos los datos para la portada (Igual que en PDF)
+     const opciones = { month: 'long', year: 'numeric' };
+     let fechaPorDefecto = new Date().toLocaleDateString('es-ES', opciones);
+     fechaPorDefecto = fechaPorDefecto.charAt(0).toUpperCase() + fechaPorDefecto.slice(1);
+     fechaPorDefecto = fechaPorDefecto.replace(" de ", " ");
+
+     const fechaManual = prompt("Introduce la fecha para el informe (ej: Abril 2026):", fechaPorDefecto);
+     const notaManual = prompt("Introduce el resultado de la auditoría (ej: 85):");
+     if (notaManual === null) return; 
+
      const combo = document.getElementById("seccionSelect");
      const nombreSeccion = combo.options[combo.selectedIndex].text;
 
-     // Llamamos a la nueva función externa
-     generarHTML(desviaciones, nombreSeccion);
+     // Llamamos a la función externa con los nuevos parámetros
+     await generarHTML(desviaciones, nombreSeccion, fechaManual, notaManual);
  };
 
  // Exportar PDF

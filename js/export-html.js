@@ -29,12 +29,40 @@ function comprimirBase64(base64Str, calidad = 0.7) { // Subimos calidad a 0.85
     });
 }
 
+/**
+ * Función auxiliar para cargar imágenes locales como Base64
+ * (Permite que el HTML sea autocontenido)
+ */
+function cargarImagen(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.onerror = () => {
+            console.warn("No se pudo cargar la imagen:", url);
+            resolve("");
+        };
+        img.src = url;
+    });
+}
+
 // 2. GENERACIÓN DEL INFORME
-async function generarHTML(desviaciones, seccionId) {
+async function generarHTML(desviaciones, seccionId, fechaManual = "", notaManual = "") {
     const fecha = new Date();
     const codigoFecha = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
     const totalGlobal = desviaciones.length;
     let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
+
+    // Cargamos imágenes para la portada
+    const imgPortada = await cargarImagen('images/portada.jpg');
+    const imgLogo = await cargarImagen('images/logo.jpg');
 
     const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
     const grupos = {};
@@ -54,17 +82,78 @@ async function generarHTML(desviaciones, seccionId) {
         <title>Informe O&L - ${nombreSeccion}</title>
         <style>
             body { font-family: Segoe UI, Arial, sans-serif; margin: 40px; color: #333; padding-bottom: 100px; }
+            
+            /* ESTILOS PORTADA */
+            .portada { 
+                display: flex; 
+                flex-direction: column; 
+                align-items: flex-start; 
+                min-height: auto; 
+                page-break-after: always; 
+                padding-top: 40px;
+                position: relative;
+            }
+            .portada-h1 { color: #007934; font-size: 32px; font-weight: bold; margin: 0 20px 40px 20px; }
+            .portada-sub { 
+                display: flex; 
+                justify-content: space-between; 
+                width: 100%; 
+                font-size: 24px; 
+                font-weight: bold; 
+                margin-bottom: 25px; 
+                padding: 0 20px; 
+                box-sizing: border-box; 
+            }
+            .portada-banner { 
+                background: #007934; 
+                color: white; 
+                width: 100%; 
+                padding: 15px 20px; 
+                display: flex; 
+                justify-content: space-between; 
+                font-size: 24px; 
+                font-weight: bold; 
+                box-sizing: border-box;
+            }
+            .portada-img-main { width: 100%; height: 350px; object-fit: cover; display: block; }
+            .portada-footer { width: 100%; display: flex; justify-content: center; margin: 30px 0; }
+            .portada-logo { max-width: 200px; }
+            .separador-portada { border: none; border-top: 2px solid #007934; margin: 0 0 25px 0; width: 100%; }
+
             .header-title { font-size: 20px; font-weight: bold; border-bottom: 2px solid rgb(200, 230, 201); padding-bottom: 5px; margin-bottom: 10px; }
             .resumen-box { background: rgb(245, 245, 245); padding: 15px; border-radius: 4px; margin-bottom: 25px; border: 1px solid #eee; }
             .resumen-box h2 { font-size: 14px; margin-top: 0; color: #555; text-decoration: underline; margin-bottom: 8px; }
             .resumen-list { display: grid; grid-template-columns: 1fr 1fr; list-style: none; padding: 0; font-size: 13px; margin: 0; }
             .resumen-list li::before { content: "• "; color: #666; }
             .cont-corr { color: #2e7d32; font-weight: bold; margin-left: 5px; }
-            .categoria-header { background: rgb(200, 230, 201); padding: 6px 12px; font-weight: bold; margin-top: 25px; border: 1px solid #ccc; border-bottom: none; font-size: 14px; }
+            .categoria-header { background: #007934; color: white; padding: 6px 12px; font-weight: bold; margin-top: 25px; border: 1px solid #007934; border-bottom: none; font-size: 14px; }
             .fila-desviacion { display: grid; grid-template-columns: 1fr 1fr; gap: 0; page-break-inside: avoid; }
             .cell { border: 0.5px solid #ccc; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 150px; position: relative; }
             .cell-subsanacion { background-color: #fafafa; }
+            .img-container { position: relative; display: inline-block; width: 100%; }
             .img-container img { max-width: 100%; max-height: 250px; border-radius: 2px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto;}
+            
+            .gps-pin { 
+                position: absolute; 
+                top: 8px; 
+                right: 8px; 
+                background: rgba(234, 67, 53, 0.9); 
+                color: white; 
+                width: 32px; 
+                height: 32px; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                text-decoration: none; 
+                font-size: 18px; 
+                box-shadow: 0 2px 6px rgba(0,0,0,0.4); 
+                z-index: 10; 
+                border: 2px solid white;
+                transition: all 0.2s;
+            }
+            .gps-pin:hover { transform: scale(1.1); background: #ea4335; }
+
             .info-row { font-size: 13px; margin-bottom: 4px; display: flex; }
             .label { font-weight: bold; min-width: 100px; }
             
@@ -85,7 +174,30 @@ async function generarHTML(desviaciones, seccionId) {
         </style>
     </head>
     <body>
-        <div class="header-title">${codigoFecha} - Informe de O&L de ${nombreSeccion.toUpperCase()} - ${totalGlobal} desviaciones</div>
+        <!-- 1. PORTADA -->
+        <div class="portada">
+            <h1 class="portada-h1">AUDITORIA DE ORDEN Y LIMPIEZA</h1>
+            
+            <div class="portada-sub">
+                <span>${seccionId.toUpperCase()}</span>
+                <span>${fechaManual}</span>
+            </div>
+
+            <div class="portada-banner">
+                <span>DESVIACIONES: ${totalGlobal}</span>
+                <span>RESULTADO: ${notaManual}</span>
+            </div>
+
+            ${imgPortada ? `<img src="${imgPortada}" class="portada-img-main">` : `<div style="height:350px"></div>`}
+
+            <div class="portada-footer">
+                ${imgLogo ? `<img src="${imgLogo}" class="portada-logo">` : ""}
+            </div>
+        </div>
+
+        <hr class="separador-portada">
+
+        <!-- 2. CONTENIDO -->
         <div class="resumen-box">
             <h2>RESUMEN:</h2>
             <ul class="resumen-list">${resumenHTML}</ul>
@@ -103,10 +215,12 @@ async function generarHTML(desviaciones, seccionId) {
         html += `<div class="categoria-header" data-tipo="${t}">${t.toUpperCase()} (${grupos[t].length})</div>`;
         for (const d of grupos[t]) {
             let fotoOriginal = d.foto ? await comprimirBase64(d.foto, 0.5) : "";
+            let linkGPS = (d.lat && d.lon) ? `<a href="https://www.google.com/maps?q=${d.lat},${d.lon}" target="_blank" class="gps-pin" title="Ver en Google Maps">📍</a>` : "";
+            
             html += `
             <div class="fila-desviacion" data-tipo="${t}" data-corregida="false">
                 <div class="cell">
-                    ${fotoOriginal ? `<div class="img-container"><img src="${fotoOriginal}"></div>` : ''}
+                    ${fotoOriginal ? `<div class="img-container">${linkGPS}<img src="${fotoOriginal}"></div>` : ''}
                     <div class="info-row"><span class="label">Ubicación:</span><span>${d.ubicacion || '—'}</span></div>
                     <div class="info-row"><span class="label">Descripción:</span><span>${d.descripcion}</span></div>
                 </div>
