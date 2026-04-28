@@ -42,18 +42,23 @@
 <h2 id="formTitulo">Nueva desviación</h2>
 
 <label>Tipo</label>
-<select id="tipo">
-  <option value="">Selecciona…</option>
-  <option>Almacenamiento</option>
-  <option>Productos químicos</option>
-  <option>Mangueras</option>
-  <option>Herramientas</option>
-  <option>Equipos e instalaciones</option>
-  <option>Elementos de seguridad y EPI's</option>
-  <option>Zonas de paso y comunes</option>
-  <option>Señalización y comunicación</option>
-  <option>Residuos</option>
-</select>
+<div style="display: flex; gap: 8px; margin-bottom: 0.7rem;">
+  <select id="tipo" style="margin-bottom: 0; flex: 1;">
+    <option value="">Selecciona…</option>
+    <option>Almacenamiento</option>
+    <option>Productos químicos</option>
+    <option>Mangueras</option>
+    <option>Herramientas</option>
+    <option>Equipos e instalaciones</option>
+    <option>Elementos de seguridad y EPI's</option>
+    <option>Zonas de paso y comunes</option>
+    <option>Señalización y comunicación</option>
+    <option>Residuos</option>
+  </select>
+  <button type="button" id="btnAbrirTags" class="btn-secondary" style="margin: 0; padding: 0 10px; width: auto; white-space: nowrap;">
+    🏷️ Sugerencias
+  </button>
+</div>
 
 <label>Descripción</label>
 <textarea id="descripcion"></textarea>
@@ -905,6 +910,63 @@ $("btnDescargarDOCX").onclick = async () => {
      clearTimeout(timerCierreModal); // Cancela el temporizador si cierran manualmente
      modal.style.display = "none"; // Oculta el modal
  }
+
+//////// Nube de tags
+// --- Lógica de Nube de Tags Simplificada ---
+let configuracionTags = {};
+
+async function cargarTags() {
+    try {
+        const res = await fetch('tags.json');
+        configuracionTags = await res.json();
+        const contenedor = $("contenedorNube");
+        contenedor.innerHTML = "";
+
+        for (const [categoria, tags] of Object.entries(configuracionTags)) {
+            const grupo = document.createElement("div");
+            grupo.className = "tag-group";
+            grupo.innerHTML = `<h4>${categoria}</h4>`;
+            
+            const nube = document.createElement("div");
+            nube.className = "tag-cloud";
+            
+            tags.forEach(t => {
+                const chip = document.createElement("span");
+                chip.className = "tag-chip";
+                chip.textContent = t;
+                chip.onclick = () => {
+                    $("tipo").value = categoria; // Selecciona el tipo
+                    $("modalTags").style.display = "none"; // Cierre automático
+                };
+                nube.appendChild(chip);
+            });
+            grupo.appendChild(nube);
+            contenedor.appendChild(grupo);
+        }
+    } catch (e) { console.error("Error al cargar tags.json", e); }
+}
+
+// Inyección del modal (Solo el contenedor de la nube)
+document.body.insertAdjacentHTML('beforeend', `
+    <div id="modalTags" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <div id="contenedorNube"></div>
+        </div>
+    </div>
+`);
+
+// Abrir modal
+$("btnAbrirTags").onclick = () => {
+    $("modalTags").style.display = "flex";
+    if (Object.keys(configuracionTags).length === 0) cargarTags();
+};
+
+// Cierre de seguridad: cerrar si se pulsa fuera de la nube (en el fondo oscuro)
+$("modalTags").onclick = (e) => {
+    if (e.target.id === "modalTags") {
+        $("modalTags").style.display = "none";
+    }
+};
 
 
  // Inicio

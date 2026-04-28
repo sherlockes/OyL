@@ -1,0 +1,11 @@
+{
+  "Almacenamiento": ["Señalización", "Carga", "Estanterías dañadas"],
+  "Productos químicos": ["Ficha", "Cubetos", "Duchas lavaojos"],
+  "Mangueras": ["Falta cartel", "Fuga", "Mal estado"],
+  "Herramientas": ["Banco de trabajo", "Herramienta sin recoger"],
+  "Equipos e instalaciones": ["Fugas", "Mal estado"],
+  "Elementos de seguridad y EPI's": ["EPI dañado", "Uso incorrecto", "Extintor obstruido"],
+  "Zonas de paso y comunes": ["Basura y chatarra", "Restos de baliza"],
+  "Señalización y comunicación": ["Cartelería", "Paneles ECO"],
+  "Residuos": ["Contenedor desbordado", "Mezcla de residuos", "Carteles"]
+}
