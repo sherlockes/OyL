@@ -114,7 +114,10 @@
         <div class="card-body-gestion">
             <button id="btnExportarSeccion" class="btn-primary btn-full">📤 Exportar</button>
             <button id="btnImportarSeccion" class="btn-outline btn-full">📥 Importar</button>
+            <button id="btnCompartirSeccion" class="btn-primary btn-full" style="display:none; background:#2e7d32;">📲 Compartir sección</button>
+            <button id="btnAnadirASeccion" class="btn-secondary btn-full">➕ Añadir a esta sección</button>
             <input type="file" id="inputArchivoSeccion" style="display:none" accept=".json">
+            <input type="file" id="inputArchivoAnadir" style="display:none" accept=".json">
         </div>
     </div>
 
@@ -138,6 +141,30 @@
     </div>
 </div>
 
+</div>
+
+<div id="modalSeleccionarSeccion" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="max-width: 420px; text-align: left; box-sizing: border-box;">
+        <h3 style="margin-top:0; color:#1976d2; display:flex; align-items:center; gap:8px;">
+            <span>➕</span> Añadir Desviaciones
+        </h3>
+        <p id="modalAnadirInfo" style="font-size:0.9rem; color:#444; margin-bottom:1rem; line-height:1.4;"></p>
+        
+        <label for="selectSeccionDestino" style="font-weight:bold; font-size:0.9rem; display:block; margin-bottom:6px;">
+            ¿A qué sección deseas añadirlas?
+        </label>
+        <select id="selectSeccionDestino" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:1rem; margin-bottom:1rem; box-sizing:border-box; background:white;"></select>
+        
+        <div id="contenedorNuevaSeccionModal" style="display:none; margin-bottom:1rem;">
+            <label style="font-size:0.85rem; color:#555; display:block; margin-bottom:4px;">Nombre de la nueva sección:</label>
+            <input type="text" id="inputNombreNuevaSeccionModal" placeholder="Ej: Zona_Norte" style="width:100%; padding:9px; border-radius:6px; border:1px solid #ccc; font-size:0.95rem; box-sizing:border-box;">
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn-secondary" id="btnCancelarAnadirModal" style="width:auto; padding:8px 16px;">Cancelar</button>
+            <button type="button" class="btn-primary" id="btnConfirmarAnadirModal" style="width:auto; padding:8px 16px;">Añadir datos</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -802,6 +829,67 @@ $("btnDescargarDOCX").onclick = async () => {
       URL.revokeObjectURL(url);
   };
 
+  // --- COMPARTIR SECCIÓN (Mostrar sólo en dispositivos móviles) ---
+  const esDispositivoMovil = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                             (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+
+  if (esDispositivoMovil) {
+      $("btnCompartirSeccion").style.display = "block";
+  } else {
+      $("btnCompartirSeccion").style.display = "none";
+  }
+
+  $("btnCompartirSeccion").onclick = async () => {
+      const seccionId = await getSeccionActualId(); 
+      
+      if (!desviaciones || desviaciones.length === 0) {
+          alert("No hay datos en esta sección para compartir.");
+          return;
+      }
+
+      const datosAExportar = {
+          tipo: "OYL_SECTION_EXPORT",
+          version: "2.0",
+          nombreSeccion: seccionId,
+          fechaExportacion: new Date().toISOString(),
+          datos: desviaciones 
+      };
+
+      const dataStr = JSON.stringify(datosAExportar, null, 2);
+      const fechaCompacta = new Date().toISOString().slice(0, 10);
+      const nombreArchivo = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
+
+      try {
+          const archivo = new File([dataStr], nombreArchivo, { type: "application/json" });
+
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+              await navigator.share({
+                  files: [archivo],
+                  title: `Sección ${seccionId} - Auditoría O&L`,
+                  text: `Te comparto las desviaciones de la sección "${seccionId}".`
+              });
+          } else {
+              // Si no soporta share o estamos en HTTP local sin HTTPS
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(archivo);
+              link.download = nombreArchivo;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(link.href);
+
+              if (!window.isSecureContext) {
+                  alert("ℹ️ En este entorno de pruebas local (HTTP) se ha descargado el archivo.\n\nEl menú nativo de Android requiere HTTPS, por lo que se activará automáticamente al desplegar en Vercel (o accediendo mediante HTTPS).");
+              }
+          }
+      } catch (err) {
+          if (err.name !== "AbortError") {
+              console.error("Error al compartir:", err);
+              alert("Error al compartir: " + err.message);
+          }
+      }
+  };
+
  // IMPORTAR (RESTAURAR)
   $("btnImportarJSON").onclick = () => $("inputImportar").click();
 
@@ -887,6 +975,168 @@ $("btnDescargarDOCX").onclick = async () => {
      
      // Limpiamos el input para poder subir el mismo archivo otra vez si fuera necesario
      e.target.value = ""; 
+ };
+
+ // --- AÑADIR A ESTA SECCIÓN (Fusión de auditorías entre usuarios) ---
+ let datosPendientesAnadir = null;
+
+ $("btnAnadirASeccion").onclick = () => {
+     $("inputArchivoAnadir").click();
+ };
+
+ $("inputArchivoAnadir").onchange = async (e) => {
+     const archivo = e.target.files[0];
+     if (!archivo) return;
+
+     const reader = new FileReader();
+     reader.onload = async (event) => {
+         try {
+             const contenido = JSON.parse(event.target.result);
+             let nuevasDesviaciones = [];
+             let nombreOrigen = "";
+
+             if (contenido.tipo === "OYL_SECTION_EXPORT" && Array.isArray(contenido.datos)) {
+                 nuevasDesviaciones = contenido.datos;
+                 nombreOrigen = contenido.nombreSeccion || "";
+             } else if (Array.isArray(contenido)) {
+                 nuevasDesviaciones = contenido;
+             } else if (contenido.datos && Array.isArray(contenido.datos)) {
+                 nuevasDesviaciones = contenido.datos;
+             } else {
+                 alert("Este archivo no contiene una lista de desviaciones válida.");
+                 return;
+             }
+
+             if (nuevasDesviaciones.length === 0) {
+                 alert("El archivo no contiene desviaciones para añadir.");
+                 return;
+             }
+
+             datosPendientesAnadir = nuevasDesviaciones;
+
+             // Poblar selector de secciones
+             const secciones = await cargarSecciones();
+             const actual = await getSeccionActualId();
+             const select = $("selectSeccionDestino");
+             select.innerHTML = "";
+
+             secciones.forEach(sec => {
+                 const opt = document.createElement("option");
+                 opt.value = sec;
+                 opt.textContent = sec === actual ? `📍 ${sec} (Sección actual)` : `📁 ${sec}`;
+                 if (sec === actual) opt.selected = true;
+                 select.appendChild(opt);
+             });
+
+             // Opción para crear una nueva sección
+             const optNueva = document.createElement("option");
+             optNueva.value = "__NUEVA__";
+             optNueva.textContent = "➕ Crear una nueva sección...";
+             select.appendChild(optNueva);
+
+             $("contenedorNuevaSeccionModal").style.display = "none";
+             $("inputNombreNuevaSeccionModal").value = nombreOrigen ? `${nombreOrigen}_Añadida` : "";
+
+             let infoTexto = `Se han encontrado <b>${nuevasDesviaciones.length}</b> desviación(es) en el archivo`;
+             if (nombreOrigen) {
+                 infoTexto += ` (exportadas de "<i>${nombreOrigen}</i>")`;
+             }
+             infoTexto += ".";
+             $("modalAnadirInfo").innerHTML = infoTexto;
+
+             $("modalSeleccionarSeccion").style.display = "flex";
+
+         } catch (error) {
+             console.error(error);
+             alert("Error al leer el archivo. Asegúrate de que sea un JSON válido.");
+         }
+     };
+     reader.readAsText(archivo);
+     e.target.value = "";
+ };
+
+ $("selectSeccionDestino").onchange = (e) => {
+     if (e.target.value === "__NUEVA__") {
+         $("contenedorNuevaSeccionModal").style.display = "block";
+         $("inputNombreNuevaSeccionModal").focus();
+     } else {
+         $("contenedorNuevaSeccionModal").style.display = "none";
+     }
+ };
+
+ $("btnCancelarAnadirModal").onclick = () => {
+     $("modalSeleccionarSeccion").style.display = "none";
+     datosPendientesAnadir = null;
+ };
+
+ $("modalSeleccionarSeccion").onclick = (e) => {
+     if (e.target.id === "modalSeleccionarSeccion") {
+         $("modalSeleccionarSeccion").style.display = "none";
+         datosPendientesAnadir = null;
+     }
+ };
+
+ $("btnConfirmarAnadirModal").onclick = async () => {
+     try {
+         if (!datosPendientesAnadir || datosPendientesAnadir.length === 0) {
+             alert("No hay datos pendientes para añadir.");
+             $("modalSeleccionarSeccion").style.display = "none";
+             return;
+         }
+
+         let destinoSeccion = $("selectSeccionDestino").value;
+         let secciones = await cargarSecciones();
+
+         if (destinoSeccion === "__NUEVA__") {
+             const nuevoNombre = $("inputNombreNuevaSeccionModal").value.trim();
+             if (!nuevoNombre) {
+                 alert("Por favor, introduce un nombre para la nueva sección.");
+                 return;
+             }
+             if (secciones.includes(nuevoNombre)) {
+                 alert("Ya existe una sección con ese nombre. Por favor, elige otro o selecciónala de la lista.");
+                 return;
+             }
+             secciones.push(nuevoNombre);
+             await guardarSecciones(secciones);
+             destinoSeccion = nuevoNombre;
+         }
+
+         let desvDestino = [];
+         try {
+             const raw = await localforage.getItem(DATA_PREFIX + destinoSeccion);
+             if (raw && Array.isArray(raw)) desvDestino = raw;
+         } catch (err) {
+             console.error("Error al cargar datos existentes", err);
+         }
+
+         const totalNuevas = datosPendientesAnadir.length;
+         const desvFusionadas = desvDestino.concat(datosPendientesAnadir);
+
+         await localforage.setItem(DATA_PREFIX + destinoSeccion, desvFusionadas);
+         await actualizarIndicadorEspacio();
+
+         $("modalSeleccionarSeccion").style.display = "none";
+         datosPendientesAnadir = null;
+
+         const seccionActual = await getSeccionActualId();
+
+         if (destinoSeccion === seccionActual) {
+             desviaciones = desvFusionadas;
+             render();
+             alert(`✅ ¡Añadidas con éxito!\n\nSe han sumado ${totalNuevas} desviaciones a esta sección ("${destinoSeccion}").\nTotal actual: ${desvFusionadas.length} desviaciones.`);
+         } else {
+             await actualizarSelectorSecciones();
+             const cambiar = confirm(`✅ Se han añadido ${totalNuevas} desviaciones a la sección "${destinoSeccion}" (Total: ${desvFusionadas.length}).\n\n¿Quieres cambiar a la sección "${destinoSeccion}" ahora?`);
+             if (cambiar) {
+                 await setSeccionActualId(destinoSeccion);
+                 window.location.reload();
+             }
+         }
+     } catch (err) {
+         console.error("Error al añadir desviaciones:", err);
+         alert("Error al procesar: " + err.message);
+     }
  };
 
  // --- LÓGICA DE AMPLIACIÓN DE IMÁGENES ---
