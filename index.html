@@ -839,8 +839,22 @@ $("btnDescargarDOCX").onclick = async () => {
       $("btnCompartirSeccion").style.display = "none";
   }
 
-  $("btnCompartirSeccion").onclick = async () => {
-      const seccionId = await getSeccionActualId(); 
+  function descargarArchivoFallback(archivo, nombreArchivo, mensaje) {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(archivo);
+      link.download = nombreArchivo;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      if (mensaje) {
+          alert(mensaje);
+      }
+  }
+
+  $("btnCompartirSeccion").onclick = () => {
+      // Obtenemos los datos de forma síncrona sin await para mantener viva la interacción del usuario
+      const seccionId = $("seccionSelect").value || "seccion_1"; 
       
       if (!desviaciones || desviaciones.length === 0) {
           alert("No hay datos en esta sección para compartir.");
@@ -860,33 +874,35 @@ $("btnDescargarDOCX").onclick = async () => {
       const nombreArchivo = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
 
       try {
-          const archivo = new File([dataStr], nombreArchivo, { type: "application/json" });
+          const blob = new Blob([dataStr], { type: "application/json" });
+          const archivo = new File([blob], nombreArchivo, { type: "application/json" });
 
+          // Verificar si el navegador en este contexto permite compartir archivos
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [archivo] })) {
-              await navigator.share({
+              navigator.share({
                   files: [archivo],
                   title: `Sección ${seccionId} - Auditoría O&L`,
                   text: `Te comparto las desviaciones de la sección "${seccionId}".`
+              }).catch((err) => {
+                  if (err.name === "AbortError") return; // Usuario canceló el menú
+                  console.error("Error en navigator.share:", err);
+                  descargarArchivoFallback(
+                      archivo, 
+                      nombreArchivo, 
+                      "ℹ️ El navegador no permitió abrir el menú nativo (" + err.message + "). Se ha descargado el archivo para que puedas compartirlo manualmente."
+                  );
               });
           } else {
               // Si no soporta share o estamos en HTTP local sin HTTPS
-              const link = document.createElement("a");
-              link.href = URL.createObjectURL(archivo);
-              link.download = nombreArchivo;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(link.href);
-
+              let msg = "";
               if (!window.isSecureContext) {
-                  alert("ℹ️ En este entorno de pruebas local (HTTP) se ha descargado el archivo.\n\nEl menú nativo de Android requiere HTTPS, por lo que se activará automáticamente al desplegar en Vercel (o accediendo mediante HTTPS).");
+                  msg = "ℹ️ Al estar en un entorno local (HTTP), el navegador bloquea el menú nativo de compartir (requiere HTTPS de Vercel). Se ha descargado el archivo para que puedas enviarlo.";
               }
+              descargarArchivoFallback(archivo, nombreArchivo, msg);
           }
       } catch (err) {
-          if (err.name !== "AbortError") {
-              console.error("Error al compartir:", err);
-              alert("Error al compartir: " + err.message);
-          }
+          console.error("Error al preparar compartir:", err);
+          alert("Error al compartir: " + err.message);
       }
   };
 
