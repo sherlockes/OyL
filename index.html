@@ -116,8 +116,8 @@
             <button id="btnImportarSeccion" class="btn-outline btn-full">📥 Importar</button>
             <button id="btnCompartirSeccion" class="btn-primary btn-full" style="display:none; background:#2e7d32;">📲 Compartir sección</button>
             <button id="btnAnadirASeccion" class="btn-secondary btn-full">➕ Añadir a esta sección</button>
-            <input type="file" id="inputArchivoSeccion" style="display:none" accept=".json">
-            <input type="file" id="inputArchivoAnadir" style="display:none" accept=".json">
+            <input type="file" id="inputArchivoSeccion" style="display:none" accept=".json,.txt,application/json,text/plain">
+            <input type="file" id="inputArchivoAnadir" style="display:none" accept=".json,.txt,application/json,text/plain">
         </div>
     </div>
 
@@ -128,7 +128,7 @@
         <div class="card-body-gestion">
             <button id="btnExportarJSON" class="btn-primary btn-full">📤 Exportar</button>
             <button id="btnImportarJSON" class="btn-outline btn-full">📥 Restaurar</button>
-            <input type="file" id="inputImportar" style="display:none" accept=".json">
+            <input type="file" id="inputImportar" style="display:none" accept=".json,.txt,application/json,text/plain">
         </div>
     </div>
 
@@ -871,11 +871,14 @@ $("btnDescargarDOCX").onclick = async () => {
 
       const dataStr = JSON.stringify(datosAExportar, null, 2);
       const fechaCompacta = new Date().toISOString().slice(0, 10);
-      const nombreArchivo = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.json`;
+      
+      // Chromium en Android solo permite compartir extensiones de su lista blanca (.txt, .pdf, etc.)
+      // La extensión .json está bloqueada por Chromium a nivel de navegador; por eso usamos .txt con MIME text/plain
+      const nombreArchivo = `Datos_${seccionId.replace(/\s+/g, '_')}_${fechaCompacta}.txt`;
 
       try {
-          const blob = new Blob([dataStr], { type: "application/json" });
-          const archivo = new File([blob], nombreArchivo, { type: "application/json" });
+          const blob = new Blob([dataStr], { type: "text/plain" });
+          const archivo = new File([blob], nombreArchivo, { type: "text/plain" });
 
           // Verificar si el navegador en este contexto permite compartir archivos
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [archivo] })) {
@@ -889,7 +892,7 @@ $("btnDescargarDOCX").onclick = async () => {
                   descargarArchivoFallback(
                       archivo, 
                       nombreArchivo, 
-                      "ℹ️ El navegador no permitió abrir el menú nativo (" + err.message + "). Se ha descargado el archivo para que puedas compartirlo manualmente."
+                      "ℹ️ Se descargó el archivo (" + nombreArchivo + ") para que puedas enviarlo manualmente."
                   );
               });
           } else {
