@@ -150,138 +150,185 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
             if (H > 60) { H = 60; W = H * r; }
             ok({ W, H });
         };
+        img.onerror = () => ok({ W: 0, H: 0 });
         img.src = base;
     });
+
+    const internalPadding = 1;
+    const labelWidth = 22;
+    const lineH = PDF_CONFIG.TAMANO_TEXTO * 0.45;
+    const gapSutil = 1;
+    const ALTO_ENCABEZADO = 8; // Cuadro de 7mm + margen de separación de 1mm
+    const margenVerticalTexto = 2.5; // Espacio vertical entre foto y texto (por encima) y entre texto y borde inferior
+    const alturaAscendente = 2.5;    // Altura del texto sobre la línea base (helvetica 10pt)
+    const alturaDescendente = 0.8;   // Trazo descendente bajo la última línea base
+
+    // Caché de medidas para optimizar el rendimiento y evitar recalcular imágenes y textos
+    const cacheMedidas = new Map();
+
+    async function getMedidas(d) {
+        if (cacheMedidas.has(d)) return cacheMedidas.get(d);
+
+        let W = 0, H = 0;
+        if (d.foto) {
+            const dimg = await dims(d.foto);
+            W = dimg.W;
+            H = dimg.H;
+        }
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
+
+        // Margen izquierdo del texto: igual al de la imagen para que queden alineados
+        const margenIzquierdo = (H > 0 && W > 0) ? (colW - W) / 2 : internalPadding;
+        const textX = margin + margenIzquierdo;
+
+        // Espacio disponible para el texto hasta el margen derecho de la celda
+        const anchoDisponible = colW - margenIzquierdo - internalPadding;
+        const spaceForUbi = Math.max(20, anchoDisponible - labelWidth + 2);
+        const spaceForDesc = Math.max(20, anchoDisponible - labelWidth - 2);
+
+        const ubiLines = doc.splitTextToSize(String(d.ubicacion || ""), spaceForUbi);
+        const descLines = doc.splitTextToSize(String(d.descripcion || ""), spaceForDesc);
+
+        const ubiH = ubiLines.length * lineH;
+        const descH = descLines.length * lineH;
+
+        // Altura que ocupa el bloque de texto desde la primera línea base hasta el final de la última línea
+        const altoTextoDesdeLineaBase = ubiH + gapSutil + ((descLines.length - 1) * lineH) + alturaDescendente;
+
+        // Altura total de la celda garantizando centrado vertical exacto del bloque de texto
+        let cellH;
+        if (H > 0) {
+            cellH = internalPadding + H + margenVerticalTexto + alturaAscendente + altoTextoDesdeLineaBase + margenVerticalTexto;
+        } else {
+            cellH = internalPadding + margenVerticalTexto + alturaAscendente + altoTextoDesdeLineaBase + margenVerticalTexto + internalPadding;
+        }
+
+        const m = {
+            W,
+            H,
+            margenIzquierdo,
+            textX,
+            ubiLines,
+            descLines,
+            ubiH,
+            descH,
+            cellH
+        };
+
+        cacheMedidas.set(d, m);
+        return m;
+    }
 
     // --- BUCLE DE CONTENIDO ---
     for (const t of ORDEN_TIPOS) {
         if (!grupos[t] || grupos[t].length === 0) continue;
 
-        if (y + 20 > ph - margin) { doc.addPage(); y = margin + 5; }
-        
+        // Comprobamos si en la página actual caben tanto el encabezado como la primera desviación del apartado
+        const primeraDesv = grupos[t][0];
+        const mPrimera = await getMedidas(primeraDesv);
+
+        // Si el encabezado cabe pero no cabe la primera desviación (o el encabezado tampoco cabe),
+        // pasamos el encabezado a la siguiente página (evitando encabezados huérfanos)
+        if (y > margin + 5 && (y + ALTO_ENCABEZADO + mPrimera.cellH > ph - margin)) {
+            doc.addPage();
+            y = margin + 5;
+        }
+
+        // Dibujar encabezado del apartado
         doc.setFont("helvetica", "bold");
         doc.setFontSize(PDF_CONFIG.TAMANO_ENCABEZADO);
-        //doc.setFillColor(...PDF_CONFIG.COLOR_TITULO);
-	doc.setFillColor(0, 121, 52);
+        doc.setFillColor(0, 121, 52);
         doc.rect(margin, y, pw - (margin * 2), 7, 'F');
         doc.setTextColor(255, 255, 255);
         doc.text(`${t.toUpperCase()} (${grupos[t].length})`, margin + 2, y + 5);
         doc.setTextColor(0, 0, 0);
-        y += 8; 
+        y += ALTO_ENCABEZADO;
 
         for (const d of grupos[t]) {
-            // 1. DIMENSIONES Y AJUSTES INICIALES
-            let W = 0, H = 0;
-            if (d.foto) { 
-                const dimg = await dims(d.foto); 
-                W = dimg.W; 
-                H = dimg.H; 
+            const m = await getMedidas(d);
+
+            // Salto de página si la desviación completa no cabe en la página actual:
+            // la fila de la tabla pasa íntegra a la siguiente página (foto y texto no se separan)
+            if (y > margin + 5 && (y + m.cellH > ph - margin)) {
+                doc.addPage();
+                y = margin + 5;
             }
 
-            const colW = (pw - (margin * 2)) / 2; // Ancho de la celda
-            const internalPadding = 1;            // Margen superior/inferior reducido
-            const labelWidth = 22;               // Espacio para "Ubicación:"
-            
-            // --- AQUÍ ESTABA EL ERROR: Definimos spaceForValue ---
-            const spaceForValue = colW - labelWidth - (internalPadding * 2);
-            
-            const lineH = PDF_CONFIG.TAMANO_TEXTO * 0.45; 
-            const gapSutil = 1; // Espacio entre bloques de texto
-
-            // 2. CÁLCULO DE LÍNEAS Y ALTURAS DE TEXTO
-            const ubiLines = doc.splitTextToSize(String(d.ubicacion || ""), spaceForValue);
-            const descLines = doc.splitTextToSize(String(d.descripcion || ""), spaceForValue);
-            
-            const ubiH = ubiLines.length * lineH;
-            const descH = descLines.length * lineH;
-
-            // 3. CÁLCULO DE ALTURA DE CELDA (MÁS AJUSTADO)
-            let cellH = (internalPadding * 2); 
-            if (H > 0) {
-                cellH += H + 1; // Foto + margen mínimo
-            }
-            cellH += ubiH + gapSutil + descH; 
-
-            // 4. SALTO DE PÁGINA SI NO CABE
-            if (y + cellH > ph - margin) { 
-                doc.addPage(); 
-                y = margin + 5; 
-            }
-
-            // 5. DIBUJAR RECUADROS
+            // Dibujar recuadros
             doc.setDrawColor(200);
-            doc.rect(margin, y, colW, cellH);        // Celda izquierda (con datos)
-            doc.rect(margin + colW, y, colW, cellH); // Celda derecha (vacía)
+            doc.rect(margin, y, colW, m.cellH);        // Celda izquierda (con datos)
+            doc.rect(margin + colW, y, colW, m.cellH); // Celda derecha (vacía)
 
             let curY = y + internalPadding;
 
-            // 6. INSERTAR FOTO
-            if (d.foto && H > 0) {
+            // Insertar foto
+            if (d.foto && m.H > 0) {
                 const fotoMini = await achicarParaPDF(d.foto);
-                const centroX = margin + (colW - W) / 2;
-                doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, centroX, curY, W, H, undefined, PDF_CONFIG.COMPRESION_IMG);
+                const centroX = margin + (colW - m.W) / 2;
+                doc.addImage(fotoMini, PDF_CONFIG.FORMATO_IMG, centroX, curY, m.W, m.H, undefined, PDF_CONFIG.COMPRESION_IMG);
 
-		// --- NUEVO BLOQUE: PIN VECTORIAL (Sin errores de imagen) ---
-		if (d.lat && d.lon) {
-		    const sIcon = 6;      // Tamaño total del icono
-		    const padding = 1.5; 
+                // --- BLOQUE: PIN VECTORIAL GPS ---
+                if (d.lat && d.lon) {
+                    const sIcon = 6;      // Tamaño total del icono
+                    const padding = 1.5; 
 
-		    // Posición: Esquina superior derecha de la foto
-		    const iconX = centroX + W - sIcon - padding;
-		    const iconY = curY + padding;
+                    // Posición: Esquina superior derecha de la foto
+                    const iconX = centroX + m.W - sIcon - padding;
+                    const iconY = curY + padding;
 
-		    // 1. Sombra del pin (un circulito gris sutil debajo)
-		    doc.setFillColor(0, 0, 0, 0.15);
-		    doc.circle(iconX + 3, iconY + 6, 1.2, 'F');
+                    // 1. Sombra del pin
+                    doc.setFillColor(0, 0, 0, 0.15);
+                    doc.circle(iconX + 3, iconY + 6, 1.2, 'F');
 
-		    // 2. Cuerpo del Pin (Rojo Google: #EA4335)
-		    doc.setFillColor(234, 67, 53);
-		    
-		    // Dibujamos la cabeza del pin (Círculo superior)
-		    doc.circle(iconX + 3, iconY + 2.5, 2.5, 'F');
-		    
-		    // Dibujamos la punta del pin (Triángulo inferior)
-		    doc.triangle(
-			iconX + 0.8, iconY + 3.5,   // Esquina izquierda
-			iconX + 5.2, iconY + 3.5,   // Esquina derecha
-			iconX + 3, iconY + 6.5,     // Punta hacia abajo
-			'F'
-		    );
+                    // 2. Cuerpo del Pin (Rojo Google: #EA4335)
+                    doc.setFillColor(234, 67, 53);
+                    doc.circle(iconX + 3, iconY + 2.5, 2.5, 'F');
+                    doc.triangle(
+                        iconX + 0.8, iconY + 3.5,   // Esquina izquierda
+                        iconX + 5.2, iconY + 3.5,   // Esquina derecha
+                        iconX + 3, iconY + 6.5,     // Punta hacia abajo
+                        'F'
+                    );
 
-		    // 3. El "agujero" blanco central
-		    doc.setFillColor(255, 255, 255);
-		    doc.circle(iconX + 3, iconY + 2.5, 1, 'F');
+                    // 3. El "agujero" blanco central
+                    doc.setFillColor(255, 255, 255);
+                    doc.circle(iconX + 3, iconY + 2.5, 1, 'F');
 
-		    // 4. EL ENLACE (Corregido el error de la URL anterior)
-		    const googleMapsUrl = `https://www.google.com/maps?q=${d.lat},${d.lon}`;
-		    doc.link(iconX, iconY, sIcon, sIcon, { url: googleMapsUrl });
-		    
-		    // Resetear colores para el resto del PDF
-		    doc.setFillColor(0, 0, 0); 
-		}
+                    // 4. Enlace GPS a Google Maps
+                    const googleMapsUrl = `https://www.google.com/maps?q=${d.lat},${d.lon}`;
+                    doc.link(iconX, iconY, sIcon, sIcon, { url: googleMapsUrl });
 
-		curY += H + 3;
+                    // Resetear color de relleno
+                    doc.setFillColor(0, 0, 0); 
+                }
+
+                // Posicionamos curY en la línea base del texto con margenVerticalTexto por encima
+                curY += m.H + margenVerticalTexto + alturaAscendente;
+            } else {
+                curY += margenVerticalTexto + alturaAscendente;
             }
 
-            // 7. INSERTAR TEXTOS
+            // Insertar textos
             doc.setFontSize(PDF_CONFIG.TAMANO_TEXTO);
 
             // Ubicación
             doc.setFont(undefined, "bold");
-            doc.text("Ubicación:", margin + internalPadding, curY);
+            doc.text("Ubicación:", m.textX, curY);
             doc.setFont(undefined, "normal");
-            doc.text(ubiLines, margin + internalPadding + labelWidth - 2, curY);
+            doc.text(m.ubiLines, m.textX + labelWidth - 2, curY);
             
-            curY += ubiH + gapSutil;
+            curY += m.ubiH + gapSutil;
 
             // Descripción
             doc.setFont(undefined, "bold");
-            doc.text("Descripción:", margin + internalPadding, curY);
+            doc.text("Descripción:", m.textX, curY);
             doc.setFont(undefined, "normal");
-            doc.text(descLines, margin + internalPadding + labelWidth + 2, curY);
+            doc.text(m.descLines, m.textX + labelWidth + 2, curY);
 
             // Avanzar posición Y para la siguiente fila
-            y += cellH; 
+            y += m.cellH; 
         }
         y += 3; 
     }

@@ -638,18 +638,33 @@ $("btnCancelarRenombrar").onclick = () => {
  }
 
  // Exportar HTML
- $("btnDescargarHTML").onclick = () => {
+ $("btnDescargarHTML").onclick = async () => {
      if (desviaciones.length === 0) {
          alert("No hay datos para exportar");
          return;
      }
 
+     const opciones = { month: 'long', year: 'numeric' };
+     let fechaPorDefecto = new Date().toLocaleDateString('es-ES', opciones);
+     fechaPorDefecto = fechaPorDefecto.charAt(0).toUpperCase() + fechaPorDefecto.slice(1);
+     fechaPorDefecto = fechaPorDefecto.replace(" de ", " ");
+
+     const fechaManual = prompt("Introduce la fecha para el informe (ej: Abril 2026):", fechaPorDefecto);
+     if (fechaManual === null) return; // Cancelado
+
+     const notaManual = prompt("Introduce el resultado de la auditoría (ej: 85):");
+     if (notaManual === null) return; // Cancelado
+
      // Capturamos la sección seleccionada
      const combo = document.getElementById("seccionSelect");
      const nombreSeccion = combo.options[combo.selectedIndex].text;
 
-     // Llamamos a la nueva función externa
-     generarHTML(desviaciones, nombreSeccion);
+     try {
+         await generarHTML(desviaciones, nombreSeccion, fechaManual, notaManual);
+     } catch (error) {
+         console.error("Error en la exportación HTML:", error);
+         alert("Error al generar el HTML. Revisa la consola.");
+     }
  };
 
  // Exportar PDF
@@ -702,8 +717,10 @@ $("btnDescargarDOCX").onclick = async () => {
     const fechaSugerida = `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
 
     // --- PREGUNTAS AL USUARIO ---
-    const fechaManual = prompt("Introduce la fecha para el informe:", fechaSugerida) || fechaSugerida;
-    const notaManual = prompt("Introduce el resultado (ej: 85) o una nota general:", "") || "";
+    const fechaManual = prompt("Introduce la fecha para el informe (ej: Abril 2026):", fechaSugerida);
+    if (fechaManual === null) return; // Cancelado
+    const notaManual = prompt("Introduce el resultado (ej: 85) o una nota general:", "");
+    if (notaManual === null) return; // Cancelado
 
     const resumen = {};
     datos.forEach(d => { resumen[d.tipo] = (resumen[d.tipo] || 0) + 1; });

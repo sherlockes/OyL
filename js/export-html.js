@@ -29,12 +29,40 @@ function comprimirBase64(base64Str, calidad = 0.7) { // Subimos calidad a 0.85
     });
 }
 
+// Función auxiliar para cargar imagen local como base64
+function cargarImagenBase64(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/jpeg", 0.85));
+        };
+        img.onerror = () => resolve("");
+        img.src = url;
+    });
+}
+
 // 2. GENERACIÓN DEL INFORME
-async function generarHTML(desviaciones, seccionId) {
+async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
     const fecha = new Date();
     const codigoFecha = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
     const totalGlobal = desviaciones.length;
     let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
+
+    const opciones = { month: 'long', year: 'numeric' };
+    let fechaDefecto = fecha.toLocaleDateString('es-ES', opciones);
+    fechaDefecto = fechaDefecto.charAt(0).toUpperCase() + fechaDefecto.slice(1);
+    fechaDefecto = fechaDefecto.replace(" de ", " ");
+
+    const fechaFinal = fechaManual || fechaDefecto;
+    const notaFinal = (notaManual !== undefined && notaManual !== null) ? String(notaManual).trim() : "";
+
+    const imgPortadaBase64 = await cargarImagenBase64('images/portada.jpg');
+    const imgLogoBase64 = await cargarImagenBase64('images/logo.jpg');
 
     const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
     const grupos = {};
@@ -54,13 +82,24 @@ async function generarHTML(desviaciones, seccionId) {
         <title>Informe O&L - ${nombreSeccion}</title>
         <style>
             body { font-family: Segoe UI, Arial, sans-serif; margin: 40px; color: #333; padding-bottom: 100px; }
+
+            /* --- ESTILOS DE LA PORTADA --- */
+            .portada-container { max-width: 900px; margin: 0 auto 50px auto; padding-bottom: 30px; border-bottom: 2px dashed #ddd; }
+            .portada-titulo { font-size: 28px; font-weight: bold; color: #007934; margin: 0 0 25px 0; }
+            .portada-subtitulo { display: flex; justify-content: space-between; align-items: baseline; font-size: 20px; font-weight: bold; color: #007934; margin-bottom: 20px; }
+            .portada-cuadro-verde { background: #007934; color: #ffffff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 22px; font-weight: bold; margin-bottom: 25px; border-radius: 4px; }
+            .portada-img-wrapper { width: 100%; margin-bottom: 25px; text-align: center; }
+            .portada-img { width: 100%; max-height: 400px; object-fit: cover; border-radius: 4px; display: block; }
+            .portada-logo-wrapper { text-align: center; margin-top: 25px; margin-bottom: 25px; }
+            .portada-logo { max-width: 200px; height: auto; display: inline-block; }
+
             .header-title { font-size: 20px; font-weight: bold; border-bottom: 2px solid rgb(200, 230, 201); padding-bottom: 5px; margin-bottom: 10px; }
             .resumen-box { background: rgb(245, 245, 245); padding: 15px; border-radius: 4px; margin-bottom: 25px; border: 1px solid #eee; }
             .resumen-box h2 { font-size: 14px; margin-top: 0; color: #555; text-decoration: underline; margin-bottom: 8px; }
             .resumen-list { display: grid; grid-template-columns: 1fr 1fr; list-style: none; padding: 0; font-size: 13px; margin: 0; }
             .resumen-list li::before { content: "• "; color: #666; }
             .cont-corr { color: #2e7d32; font-weight: bold; margin-left: 5px; }
-            .categoria-header { background: rgb(200, 230, 201); padding: 6px 12px; font-weight: bold; margin-top: 25px; border: 1px solid #ccc; border-bottom: none; font-size: 14px; }
+            .categoria-header { background: #007934; color: #ffffff; padding: 6px 12px; font-weight: bold; margin-top: 25px; border: 1px solid #007934; border-bottom: none; font-size: 14px; }
             .fila-desviacion { display: grid; grid-template-columns: 1fr 1fr; gap: 0; page-break-inside: avoid; }
             .cell { border: 0.5px solid #ccc; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 150px; position: relative; }
             .cell-subsanacion { background-color: #fafafa; }
@@ -81,10 +120,35 @@ async function generarHTML(desviaciones, seccionId) {
             .texto-subsanado { font-size: 13px; margin-top: 5px; white-space: pre-wrap; }
             .overlay-msg { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.6); color:white; padding:5px 10px; border-radius:4px; font-size:11px; pointer-events:none; }
             
-            @media print { .no-print, .controls-container, .btn-edit, .btn-add, .overlay-msg, input { display: none !important; } }
+            @media print {
+                .no-print, .controls-container, .btn-edit, .btn-add, .overlay-msg, input { display: none !important; }
+                body { margin: 15mm; }
+                .portada-container { border-bottom: none; margin-bottom: 0; padding-bottom: 0; page-break-after: always; break-after: page; }
+            }
         </style>
     </head>
     <body>
+        <!-- PORTADA -->
+        <div class="portada-container">
+            <h1 class="portada-titulo">AUDITORIA DE ORDEN Y LIMPIEZA</h1>
+            <div class="portada-subtitulo">
+                <span class="portada-seccion">${nombreSeccion.toUpperCase()}</span>
+                <span class="portada-fecha">${fechaFinal}</span>
+            </div>
+            <div class="portada-cuadro-verde">
+                <span>DESVIACIONES: ${totalGlobal}</span>
+                ${notaFinal ? `<span>RESULTADO: ${notaFinal}</span>` : ''}
+            </div>
+            ${imgPortadaBase64 ? `
+            <div class="portada-img-wrapper">
+                <img src="${imgPortadaBase64}" class="portada-img" alt="Portada">
+            </div>` : ''}
+            ${imgLogoBase64 ? `
+            <div class="portada-logo-wrapper">
+                <img src="${imgLogoBase64}" class="portada-logo" alt="Logo">
+            </div>` : ''}
+        </div>
+
         <div class="header-title">${codigoFecha} - Informe de O&L de ${nombreSeccion.toUpperCase()} - ${totalGlobal} desviaciones</div>
         <div class="resumen-box">
             <h2>RESUMEN:</h2>
