@@ -39,6 +39,64 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
         img.src = base64;
     });
 
+    const estamparPinGPS = (base64, lat, lon) => new Promise(res => {
+        if (!base64 || !lat || !lon) return res(base64);
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+
+                // Proporción del icono relativa a la imagen (similar al PDF)
+                const s = Math.max(30, Math.round(canvas.width * 0.07));
+                const padding = Math.round(s * 0.35);
+                const x = canvas.width - s - padding;
+                const y = padding;
+
+                ctx.save();
+                // 1. Sombra del pin
+                ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+                ctx.beginPath();
+                ctx.ellipse(x + s * 0.5, y + s * 0.95, s * 0.22, s * 0.1, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 2. Cabeza del Pin (Rojo Google: #EA4335)
+                const radio = s * 0.38;
+                const centroX = x + s * 0.5;
+                const centroY = y + radio + (s * 0.05);
+                ctx.fillStyle = "#EA4335";
+                ctx.beginPath();
+                ctx.arc(centroX, centroY, radio, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 3. Punta inferior
+                ctx.beginPath();
+                ctx.moveTo(centroX - radio * 0.9, centroY + radio * 0.35);
+                ctx.lineTo(centroX + radio * 0.9, centroY + radio * 0.35);
+                ctx.lineTo(centroX, y + s * 0.95);
+                ctx.closePath();
+                ctx.fill();
+
+                // 4. Centro blanco (agujero)
+                ctx.fillStyle = "#FFFFFF";
+                ctx.beginPath();
+                ctx.arc(centroX, centroY, radio * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                res(canvas.toDataURL("image/jpeg", 0.9));
+            } catch (err) {
+                console.error("Error estampando pin GPS en imagen para DOCX:", err);
+                res(base64);
+            }
+        };
+        img.onerror = () => res(base64);
+        img.src = base64;
+    });
+
     let portadaBuffer = null;
     try {
         portadaBuffer = await imageToBuffer("images/portada.jpg");
@@ -273,13 +331,23 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
         for (const d of grupos[t]) {
             const leftCellChildren = [];
 
-            // Foto
+            // Foto con pin GPS clickable si tiene coordenadas (igual que en PDF)
             if (d.foto) {
-                const buffer = base64ToBuffer(d.foto);
+                const tieneGPS = Boolean(d.lat && d.lon);
+                const fotoConPin = tieneGPS ? await estamparPinGPS(d.foto, d.lat, d.lon) : d.foto;
+                const buffer = base64ToBuffer(fotoConPin);
                 if (buffer) {
-                    const dim = await getImageDimensions(d.foto);
+                    const dim = await getImageDimensions(fotoConPin);
+                    const imgRun = new ImageRun({ data: buffer, transformation: { width: dim.width, height: dim.height } });
+                    const fotoElement = tieneGPS
+                        ? new ExternalHyperlink({
+                            children: [imgRun],
+                            link: `https://www.google.com/maps?q=${d.lat},${d.lon}`
+                        })
+                        : imgRun;
+
                     leftCellChildren.push(new Paragraph({
-                        children: [new ImageRun({ data: buffer, transformation: { width: dim.width, height: dim.height } })],
+                        children: [fotoElement],
                         alignment: AlignmentType.CENTER,
                         spacing: { before: 60, after: 100 }
                     }));
@@ -287,11 +355,20 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
             }
 
             // Ubicación (arriba, como en PDF)
+            const ubiChildren = [
+                new TextRun({ text: "Ubicación: ", bold: true, size: 20 }), 
+                new TextRun({ text: d.ubicacion || "—", size: 20 })
+            ];
+            // Si no hay foto pero sí coordenadas, dejamos un enlace discreto
+            if (!d.foto && d.lat && d.lon) {
+                ubiChildren.push(new TextRun({ text: "  " }));
+                ubiChildren.push(new ExternalHyperlink({
+                    children: [new TextRun({ text: "📍 Google Maps", color: "0000FF", underline: {}, size: 18 })],
+                    link: `https://www.google.com/maps?q=${d.lat},${d.lon}`
+                }));
+            }
             leftCellChildren.push(new Paragraph({
-                children: [
-                    new TextRun({ text: "Ubicación: ", bold: true, size: 20 }), 
-                    new TextRun({ text: d.ubicacion || "—", size: 20 })
-                ],
+                children: ubiChildren,
                 spacing: { before: 40, after: 40 },
                 indent: { left: 120, right: 120 }
             }));
@@ -305,21 +382,6 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
                 spacing: { before: 40, after: 40 },
                 indent: { left: 120, right: 120 }
             }));
-
-            // Enlace GPS
-            if (d.lat && d.lon) {
-                leftCellChildren.push(new Paragraph({
-                    children: [
-                        new TextRun({ text: "📍 ", size: 20 }), 
-                        new ExternalHyperlink({
-                            children: [new TextRun({ text: "Ver en Google Maps", color: "0000FF", underline: {}, size: 20 })],
-                            link: `https://www.google.com/maps?q=${d.lat},${d.lon}`
-                        })
-                    ],
-                    spacing: { before: 40, after: 60 },
-                    indent: { left: 120, right: 120 }
-                }));
-            }
 
             // Fila de la tabla con cantSplit para que no se divida entre páginas
             seccionesDoc.push(new Table({
