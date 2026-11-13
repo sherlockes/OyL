@@ -97,6 +97,51 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
         img.src = base64;
     });
 
+    const enlazarImagenGPS = (imgRun, lat, lon) => {
+        if (!imgRun || !lat || !lon) return;
+        try {
+            const drawing = imgRun.root && imgRun.root[0];
+            const inline = drawing && (drawing.inline || (drawing.root && drawing.root.find(c => c && c.rootKey === "wp:inline")));
+            if (!inline) return;
+
+            const docPr = inline.root && inline.root.find(c => c && c.rootKey === "wp:docPr");
+            if (!docPr) return;
+
+            const url = `https://www.google.com/maps?q=${lat},${lon}`;
+            const linkId = "gps" + Math.floor(Math.random() * 10000000);
+            const XmlBase = docx.XmlComponent || (docPr && Object.getPrototypeOf(docPr.constructor));
+
+            class HyperlinkClickComponent extends XmlBase {
+                constructor() {
+                    super("a:hlinkClick");
+                }
+                prepForXml(context) {
+                    if (context && context.viewWrapper && context.viewWrapper.Relationships) {
+                        context.viewWrapper.Relationships.createRelationship(
+                            linkId,
+                            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+                            url,
+                            "External"
+                        );
+                    }
+                    return {
+                        "a:hlinkClick": {
+                            _attr: {
+                                "xmlns:a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+                                "r:id": `rId${linkId}`,
+                                "tooltip": "Ver en Google Maps"
+                            }
+                        }
+                    };
+                }
+            }
+
+            docPr.root.push(new HyperlinkClickComponent());
+        } catch (err) {
+            console.error("Error al enlazar imagen GPS en DOCX:", err);
+        }
+    };
+
     let portadaBuffer = null;
     try {
         portadaBuffer = await imageToBuffer("images/portada.jpg");
@@ -339,15 +384,13 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
                 if (buffer) {
                     const dim = await getImageDimensions(fotoConPin);
                     const imgRun = new ImageRun({ data: buffer, transformation: { width: dim.width, height: dim.height } });
-                    const fotoElement = tieneGPS
-                        ? new ExternalHyperlink({
-                            children: [imgRun],
-                            link: `https://www.google.com/maps?q=${d.lat},${d.lon}`
-                        })
-                        : imgRun;
+                    
+                    if (tieneGPS) {
+                        enlazarImagenGPS(imgRun, d.lat, d.lon);
+                    }
 
                     leftCellChildren.push(new Paragraph({
-                        children: [fotoElement],
+                        children: [imgRun],
                         alignment: AlignmentType.CENTER,
                         spacing: { before: 60, after: 100 }
                     }));
@@ -356,16 +399,15 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
 
             // Ubicación (arriba, como en PDF)
             const ubiChildren = [
-                new TextRun({ text: "Ubicación: ", bold: true, size: 20 }), 
-                new TextRun({ text: d.ubicacion || "—", size: 20 })
+                new TextRun({ text: "Ubicación: ", bold: true, size: 20 })
             ];
-            // Si no hay foto pero sí coordenadas, dejamos un enlace discreto
-            if (!d.foto && d.lat && d.lon) {
-                ubiChildren.push(new TextRun({ text: "  " }));
+            if (d.lat && d.lon) {
                 ubiChildren.push(new ExternalHyperlink({
-                    children: [new TextRun({ text: "📍 Google Maps", color: "0000FF", underline: {}, size: 18 })],
+                    children: [new TextRun({ text: d.ubicacion || "Ver en Google Maps", color: "0000FF", underline: {}, size: 20 })],
                     link: `https://www.google.com/maps?q=${d.lat},${d.lon}`
                 }));
+            } else {
+                ubiChildren.push(new TextRun({ text: d.ubicacion || "—", size: 20 }));
             }
             leftCellChildren.push(new Paragraph({
                 children: ubiChildren,
