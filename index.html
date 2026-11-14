@@ -1113,18 +1113,13 @@ $("btnDescargarDOCX").onclick = async () => {
                  return;
              }
 
-             let nombreSugerido = contenido.nombreSeccion;
+             let nombreSugerido = (contenido.nombreSeccion || "").trim();
              let secciones = await cargarSecciones();
 
-             // Si la sección ya existe, preguntamos si quiere sobrescribir o renombrar
+             // Si la sección ya existe, informamos y cancelamos la importación para evitar sobrescrituras
              if (secciones.includes(nombreSugerido)) {
-                 const confirmacion = confirm(`La sección "${nombreSugerido}" ya existe. ¿Quieres sobrescribir los datos actuales? \n(Aceptar: Sobrescribir / Cancelar: Importar con otro nombre)`);
-                 
-                 if (!confirmacion) {
-                     const nuevoNombre = prompt("Introduce un nuevo nombre para esta sección:", nombreSugerido + "_Copia");
-                     if (!nuevoNombre) return; // Canceló todo
-                     nombreSugerido = nuevoNombre.trim();
-                 }
+                 alert(`La sección "${nombreSugerido}" ya existe. No se puede importar para evitar sobreescribir los datos actuales.`);
+                 return;
              }
 
              // --- GUARDADO DE DATOS ---
