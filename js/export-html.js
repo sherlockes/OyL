@@ -1,19 +1,23 @@
 // 1. COMPRESIÓN DE IMÁGENES
-// Busca esta función al principio del archivo js/export-html.js
-function comprimirBase64(base64Str, calidad = 0.7) { // Subimos calidad a 0.85
+function comprimirBase64(base64Str, calidad = 0.7) {
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const MAX_WIDTH = 640; // Antes 800, ahora 1600 para alta definición
+            const MAX_DIM = 640;
             let width = img.width;
             let height = img.height;
             
-            if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
+            if (width > MAX_DIM || height > MAX_DIM) {
+                if (width > height) {
+                    height = Math.round((height * MAX_DIM) / width);
+                    width = MAX_DIM;
+                } else {
+                    width = Math.round((width * MAX_DIM) / height);
+                    height = MAX_DIM;
+                }
             }
             
             canvas.width = width;
@@ -22,7 +26,6 @@ function comprimirBase64(base64Str, calidad = 0.7) { // Subimos calidad a 0.85
             ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
             
-            // Generamos un JPEG de alta calidad
             resolve(canvas.toDataURL('image/jpeg', calidad));
         };
         img.onerror = () => resolve(base64Str);
@@ -79,6 +82,7 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Informe O&L - ${nombreSeccion}</title>
         <style>
             body { font-family: Segoe UI, Arial, sans-serif; margin: 40px; color: #333; padding-bottom: 100px; }
@@ -114,14 +118,49 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
             .btn-filter { background: #1976d2; }
             .btn-filter.active { background: #f57c00; box-shadow: inset 0 2px 5px rgba(0,0,0,0.4); }
             
-            .btn-add { background: #1976d2; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+            .btn-add { background: #1976d2; color: white; border: none; padding: 10px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; font-family: inherit; }
             .btn-edit { background: #ffa000; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; align-self: flex-end; }
+            .btn-sub-directo { background: #eef2f6; color: #333; border: 1px solid #ccd7e2; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500; font-family: inherit; }
+            .btn-sub-directo:hover, .btn-sub-directo:active { background: #dce6f0; }
             textarea { width: 100%; border: 1px solid #ccc; font-family: inherit; font-size: 13px; margin-top: 5px; padding: 5px; box-sizing: border-box; resize: vertical; }
             .texto-subsanado { font-size: 13px; margin-top: 5px; white-space: pre-wrap; }
-            .overlay-msg { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.6); color:white; padding:5px 10px; border-radius:4px; font-size:11px; pointer-events:none; }
+            .overlay-msg { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.65); color:white; padding:6px 12px; border-radius:4px; font-size:11px; pointer-events:none; text-align:center; }
+
+            /* MODAL / ACTION SHEET SELECTOR FOTO */
+            .modal-foto-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; display: flex; justify-content: center; align-items: flex-end; }
+            @media (min-width: 600px) { .modal-foto-overlay { align-items: center; } }
+            .modal-foto-sheet { background: #ffffff; width: 100%; max-width: 440px; border-radius: 16px 16px 0 0; padding: 20px; box-sizing: border-box; box-shadow: 0 -4px 20px rgba(0,0,0,0.25); }
+            @media (min-width: 600px) { .modal-foto-sheet { border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.3); } }
+            .modal-foto-header { text-align: center; margin-bottom: 16px; }
+            .modal-foto-header h3 { margin: 0 0 6px 0; font-size: 17px; color: #007934; }
+            .modal-foto-header p { margin: 0; font-size: 13px; color: #666; }
+            .modal-foto-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+            .btn-sheet { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 10px; background: #f9f9f9; cursor: pointer; text-align: left; font-family: inherit; width: 100%; box-sizing: border-box; }
+            .btn-sheet:active { transform: scale(0.98); }
+            .btn-sheet-cam { border-color: #c8e6c9; background: #f1f8e9; }
+            .btn-sheet-gal { border-color: #bbdefb; background: #e3f2fd; }
+            .sheet-icon { font-size: 26px; line-height: 1; }
+            .sheet-text strong { display: block; font-size: 14px; color: #222; }
+            .sheet-text small { display: block; font-size: 11px; color: #666; }
+            .btn-sheet-cancel { width: 100%; padding: 11px; border: none; border-radius: 10px; background: #eee; color: #555; font-weight: bold; font-size: 14px; cursor: pointer; font-family: inherit; }
+            .btn-sheet-cancel:active { background: #ddd; }
+
+            /* RESPONSIVE MÓVIL */
+            @media (max-width: 768px) {
+                body { margin: 15px 10px; padding-bottom: 120px; }
+                .portada-container { margin-bottom: 30px; }
+                .portada-titulo { font-size: 22px; }
+                .portada-subtitulo { font-size: 16px; flex-direction: column; gap: 5px; }
+                .portada-cuadro-verde { font-size: 17px; flex-direction: column; gap: 8px; text-align: center; }
+                .resumen-list { grid-template-columns: 1fr; }
+                .fila-desviacion { grid-template-columns: 1fr; }
+                .cell { min-height: auto; }
+                .controls-container { right: 10px; bottom: 10px; left: 10px; }
+                .btn-action { width: 100%; justify-content: center; font-size: 13px; padding: 10px; }
+            }
             
             @media print {
-                .no-print, .controls-container, .btn-edit, .btn-add, .overlay-msg, input { display: none !important; }
+                .no-print, .controls-container, .btn-edit, .btn-add, .btn-sub-directo, .overlay-msg, .modal-foto-overlay, input { display: none !important; }
                 body { margin: 15mm; }
                 .portada-container { border-bottom: none; margin-bottom: 0; padding-bottom: 0; page-break-after: always; break-after: page; }
             }
@@ -182,9 +221,12 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
                         <textarea rows="3" placeholder="Describe la corrección..."></textarea>
                         <button class="btn-add" onclick="finalizarEdicion(this)" style="background:#2e7d32; margin-top:10px;">✅ ACEPTAR</button>
                     </div>
-                    <div class="upload-zone" style="text-align:center; margin:auto;">
-                        <button class="btn-add" onclick="this.nextElementSibling.click()">➕ AÑADIR SUBSANACIÓN</button>
-                        <input type="file" accept="image/*" style="display:none;" onchange="procesarFoto(this)">
+                    <div class="upload-zone" style="text-align:center; margin:auto; padding:8px 0;">
+                        <button type="button" class="btn-add" onclick="abrirSelectorFoto(this.closest('.cell'))">➕ AÑADIR SUBSANACIÓN</button>
+                        <div style="display:flex; justify-content:center; gap:6px; margin-top:8px;">
+                            <button type="button" class="btn-sub-directo" onclick="abrirOrigenDirecto(this.closest('.cell'), 'camara')" title="Hacer foto con la cámara">📷 Cámara</button>
+                            <button type="button" class="btn-sub-directo" onclick="abrirOrigenDirecto(this.closest('.cell'), 'galeria')" title="Elegir de la galería">🖼️ Galería</button>
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -193,8 +235,72 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
 
     html += `
         </div>
+
+        <!-- Controles para selección de foto en subsanaciones -->
+        <input type="file" id="input-camara-subsanacion" accept="image/*" capture="environment" style="display:none;" onchange="procesarFoto(this)">
+        <input type="file" id="input-galeria-subsanacion" accept="image/*" style="display:none;" onchange="procesarFoto(this)">
+
+        <div id="modal-origen-foto" class="modal-foto-overlay no-print" style="display:none;" onclick="cerrarModalFoto(event)">
+            <div class="modal-foto-sheet" onclick="event.stopPropagation()">
+                <div class="modal-foto-header">
+                    <h3>📷 Añadir Foto de Subsanación</h3>
+                    <p>Selecciona cómo deseas añadir la imagen:</p>
+                </div>
+                <div class="modal-foto-actions">
+                    <button type="button" class="btn-sheet btn-sheet-cam" onclick="seleccionarOrigen('camara')">
+                        <span class="sheet-icon">📸</span>
+                        <div class="sheet-text">
+                            <strong>Tomar foto con la cámara</strong>
+                            <small>Abre la cámara del dispositivo para hacer la foto</small>
+                        </div>
+                    </button>
+                    <button type="button" class="btn-sheet btn-sheet-gal" onclick="seleccionarOrigen('galeria')">
+                        <span class="sheet-icon">🖼️</span>
+                        <div class="sheet-text">
+                            <strong>Elegir de la galería</strong>
+                            <small>Selecciona una imagen guardada en tu dispositivo</small>
+                        </div>
+                    </button>
+                </div>
+                <button type="button" class="btn-sheet-cancel" onclick="cerrarModalFoto()">Cancelar</button>
+            </div>
+        </div>
+
         <script>
             let filtroActivo = false;
+            let celdaActiva = null;
+
+            function abrirSelectorFoto(cell) {
+                celdaActiva = cell;
+                const modal = document.getElementById('modal-origen-foto');
+                if (modal) modal.style.display = 'flex';
+            }
+
+            function cerrarModalFoto(e) {
+                if (e && e.target && e.target !== e.currentTarget && !e.target.classList.contains('btn-sheet-cancel')) return;
+                const modal = document.getElementById('modal-origen-foto');
+                if (modal) modal.style.display = 'none';
+            }
+
+            function seleccionarOrigen(origen) {
+                const modal = document.getElementById('modal-origen-foto');
+                if (modal) modal.style.display = 'none';
+                if (!celdaActiva) return;
+                if (origen === 'camara') {
+                    document.getElementById('input-camara-subsanacion').click();
+                } else {
+                    document.getElementById('input-galeria-subsanacion').click();
+                }
+            }
+
+            function abrirOrigenDirecto(cell, origen) {
+                celdaActiva = cell;
+                if (origen === 'camara') {
+                    document.getElementById('input-camara-subsanacion').click();
+                } else {
+                    document.getElementById('input-galeria-subsanacion').click();
+                }
+            }
 
             function actualizarResumen() {
                 const categorias = {};
@@ -248,14 +354,37 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
             }
 
             async function procesarFoto(input) {
-                const file = input.files[0];
-                if (!file) return;
+                const file = input.files && input.files[0];
+                if (!file || !celdaActiva) {
+                    input.value = "";
+                    return;
+                }
+                const cell = celdaActiva;
+                const uploadZone = cell.querySelector('.upload-zone');
+                const prevHTML = uploadZone ? uploadZone.innerHTML : "";
+                if (uploadZone) {
+                    uploadZone.innerHTML = '<div style="color:#007934; font-weight:bold; font-size:13px; padding:10px;">⏳ Optimizando imagen...</div>';
+                }
+
                 const reader = new FileReader();
                 reader.onload = async (e) => {
-                    const cell = input.closest('.cell');
-                    const fotoComp = await comprimirImagen(e.target.result);
-                    abrirEditor(cell, fotoComp, "");
+                    try {
+                        const fotoComp = await comprimirImagen(e.target.result, 800, 0.65);
+                        abrirEditor(cell, fotoComp, "");
+                    } catch (err) {
+                        console.error("Error al procesar imagen:", err);
+                        alert("Error al procesar la imagen.");
+                        if (uploadZone) uploadZone.innerHTML = prevHTML;
+                    } finally {
+                        input.value = "";
+                        celdaActiva = null;
+                    }
+                };
+                reader.onerror = () => {
+                    alert("Error al leer el archivo de imagen.");
+                    if (uploadZone) uploadZone.innerHTML = prevHTML;
                     input.value = "";
+                    celdaActiva = null;
                 };
                 reader.readAsDataURL(file);
             }
@@ -265,9 +394,9 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
                 cell.querySelector('.subsanacion-view').style.display = 'none';
                 const editZone = cell.querySelector('.subsanacion-edit');
                 editZone.querySelector('.img-preview').innerHTML = \`
-                    <div class="img-container" style="cursor:pointer; position:relative;" onclick="this.closest('.cell').querySelector('input[type=file]').click()">
+                    <div class="img-container" style="cursor:pointer; position:relative;" onclick="abrirSelectorFoto(this.closest('.cell'))" title="Toca para cambiar la imagen">
                         <img src="\${foto}">
-                        <div class="overlay-msg">Click para cambiar imagen</div>
+                        <div class="overlay-msg">Toca para cambiar (Cámara o Galería)</div>
                     </div>\`;
                 editZone.querySelector('textarea').value = texto;
                 editZone.style.display = 'block';
@@ -301,23 +430,42 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
                 abrirEditor(cell, foto, texto);
             }
 
-            function comprimirImagen(base64) {
+            function comprimirImagen(base64, maxDim = 800, calidad = 0.65) {
                 return new Promise(res => {
-                    const img = new Image(); img.src = base64;
+                    const img = new Image(); 
+                    img.src = base64;
                     img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxDim || height > maxDim) {
+                            if (width > height) {
+                                height = Math.round((height * maxDim) / width);
+                                width = maxDim;
+                            } else {
+                                width = Math.round((width * maxDim) / height);
+                                height = maxDim;
+                            }
+                        }
+
                         const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
                         const ctx = canvas.getContext('2d');
-                        const MAX_WIDTH = 640; // Calidad de sobra para la columna de subsanación
-                        canvas.width = MAX_WIDTH; 
-                        canvas.height = (MAX_WIDTH * img.height) / img.width;
-                        ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,canvas.width,canvas.height);
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        res(canvas.toDataURL('image/jpeg', 0.6)); // Calidad 70%
-                    }
+                        ctx.fillStyle = "#FFFFFF"; 
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+                        res(canvas.toDataURL('image/jpeg', calidad));
+                    };
+                    img.onerror = () => res(base64);
                 });
             }
 
             function descargarVersionEditable() {
+                const modal = document.getElementById('modal-origen-foto');
+                if (modal) modal.style.display = 'none';
+                celdaActiva = null;
+
                 const tituloCompleto = document.querySelector('.header-title').innerText;
                 const partes = tituloCompleto.split(' - ');
                 const partePrincipal = partes[0] + ' - ' + partes[1];
