@@ -82,7 +82,6 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Informe O&L - ${nombreSeccion}</title>
         <style>
             body { font-family: Segoe UI, Arial, sans-serif; margin: 40px; color: #333; padding-bottom: 100px; }
@@ -118,49 +117,31 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
             .btn-filter { background: #1976d2; }
             .btn-filter.active { background: #f57c00; box-shadow: inset 0 2px 5px rgba(0,0,0,0.4); }
             
-            .btn-add { background: #1976d2; color: white; border: none; padding: 10px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; font-family: inherit; }
+            .btn-add { background: #1976d2; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
             .btn-edit { background: #ffa000; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px; align-self: flex-end; }
-            .btn-sub-directo { background: #eef2f6; color: #333; border: 1px solid #ccd7e2; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500; font-family: inherit; }
-            .btn-sub-directo:hover, .btn-sub-directo:active { background: #dce6f0; }
             textarea { width: 100%; border: 1px solid #ccc; font-family: inherit; font-size: 13px; margin-top: 5px; padding: 5px; box-sizing: border-box; resize: vertical; }
             .texto-subsanado { font-size: 13px; margin-top: 5px; white-space: pre-wrap; }
             .overlay-msg { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.65); color:white; padding:6px 12px; border-radius:4px; font-size:11px; pointer-events:none; text-align:center; }
 
-            /* MODAL / ACTION SHEET SELECTOR FOTO */
-            .modal-foto-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; display: flex; justify-content: center; align-items: flex-end; }
-            @media (min-width: 600px) { .modal-foto-overlay { align-items: center; } }
-            .modal-foto-sheet { background: #ffffff; width: 100%; max-width: 440px; border-radius: 16px 16px 0 0; padding: 20px; box-sizing: border-box; box-shadow: 0 -4px 20px rgba(0,0,0,0.25); }
-            @media (min-width: 600px) { .modal-foto-sheet { border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.3); } }
-            .modal-foto-header { text-align: center; margin-bottom: 16px; }
-            .modal-foto-header h3 { margin: 0 0 6px 0; font-size: 17px; color: #007934; }
+            /* MODAL SELECTOR FOTO */
+            .modal-foto-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+            .modal-foto-sheet { background: #ffffff; width: 90%; max-width: 380px; border-radius: 10px; padding: 20px; box-sizing: border-box; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+            .modal-foto-header { text-align: center; margin-bottom: 15px; }
+            .modal-foto-header h3 { margin: 0 0 6px 0; font-size: 16px; color: #007934; }
             .modal-foto-header p { margin: 0; font-size: 13px; color: #666; }
-            .modal-foto-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
-            .btn-sheet { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 10px; background: #f9f9f9; cursor: pointer; text-align: left; font-family: inherit; width: 100%; box-sizing: border-box; }
+            .modal-foto-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+            .btn-sheet { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9; cursor: pointer; text-align: left; font-family: inherit; width: 100%; box-sizing: border-box; }
             .btn-sheet:active { transform: scale(0.98); }
             .btn-sheet-cam { border-color: #c8e6c9; background: #f1f8e9; }
             .btn-sheet-gal { border-color: #bbdefb; background: #e3f2fd; }
-            .sheet-icon { font-size: 26px; line-height: 1; }
-            .sheet-text strong { display: block; font-size: 14px; color: #222; }
+            .sheet-icon { font-size: 22px; line-height: 1; }
+            .sheet-text strong { display: block; font-size: 13px; color: #222; }
             .sheet-text small { display: block; font-size: 11px; color: #666; }
-            .btn-sheet-cancel { width: 100%; padding: 11px; border: none; border-radius: 10px; background: #eee; color: #555; font-weight: bold; font-size: 14px; cursor: pointer; font-family: inherit; }
+            .btn-sheet-cancel { width: 100%; padding: 10px; border: none; border-radius: 6px; background: #eee; color: #555; font-weight: bold; font-size: 13px; cursor: pointer; font-family: inherit; }
             .btn-sheet-cancel:active { background: #ddd; }
-
-            /* RESPONSIVE MÓVIL */
-            @media (max-width: 768px) {
-                body { margin: 15px 10px; padding-bottom: 120px; }
-                .portada-container { margin-bottom: 30px; }
-                .portada-titulo { font-size: 22px; }
-                .portada-subtitulo { font-size: 16px; flex-direction: column; gap: 5px; }
-                .portada-cuadro-verde { font-size: 17px; flex-direction: column; gap: 8px; text-align: center; }
-                .resumen-list { grid-template-columns: 1fr; }
-                .fila-desviacion { grid-template-columns: 1fr; }
-                .cell { min-height: auto; }
-                .controls-container { right: 10px; bottom: 10px; left: 10px; }
-                .btn-action { width: 100%; justify-content: center; font-size: 13px; padding: 10px; }
-            }
             
             @media print {
-                .no-print, .controls-container, .btn-edit, .btn-add, .btn-sub-directo, .overlay-msg, .modal-foto-overlay, input { display: none !important; }
+                .no-print, .controls-container, .btn-edit, .btn-add, .overlay-msg, .modal-foto-overlay, input { display: none !important; }
                 body { margin: 15mm; }
                 .portada-container { border-bottom: none; margin-bottom: 0; padding-bottom: 0; page-break-after: always; break-after: page; }
             }
@@ -221,12 +202,8 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
                         <textarea rows="3" placeholder="Describe la corrección..."></textarea>
                         <button class="btn-add" onclick="finalizarEdicion(this)" style="background:#2e7d32; margin-top:10px;">✅ ACEPTAR</button>
                     </div>
-                    <div class="upload-zone" style="text-align:center; margin:auto; padding:8px 0;">
+                    <div class="upload-zone" style="text-align:center; margin:auto;">
                         <button type="button" class="btn-add" onclick="abrirSelectorFoto(this.closest('.cell'))">➕ AÑADIR SUBSANACIÓN</button>
-                        <div style="display:flex; justify-content:center; gap:6px; margin-top:8px;">
-                            <button type="button" class="btn-sub-directo" onclick="abrirOrigenDirecto(this.closest('.cell'), 'camara')" title="Hacer foto con la cámara">📷 Cámara</button>
-                            <button type="button" class="btn-sub-directo" onclick="abrirOrigenDirecto(this.closest('.cell'), 'galeria')" title="Elegir de la galería">🖼️ Galería</button>
-                        </div>
                     </div>
                 </div>
             </div>`;
@@ -286,15 +263,6 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
                 const modal = document.getElementById('modal-origen-foto');
                 if (modal) modal.style.display = 'none';
                 if (!celdaActiva) return;
-                if (origen === 'camara') {
-                    document.getElementById('input-camara-subsanacion').click();
-                } else {
-                    document.getElementById('input-galeria-subsanacion').click();
-                }
-            }
-
-            function abrirOrigenDirecto(cell, origen) {
-                celdaActiva = cell;
                 if (origen === 'camara') {
                     document.getElementById('input-camara-subsanacion').click();
                 } else {
