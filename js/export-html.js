@@ -56,8 +56,8 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual, opc
     const totalGlobal = desviaciones.length;
     let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
 
-    const opciones = { month: 'long', year: 'numeric' };
-    let fechaDefecto = fecha.toLocaleDateString('es-ES', opciones);
+    const opcionesFecha = { month: 'long', year: 'numeric' };
+    let fechaDefecto = fecha.toLocaleDateString('es-ES', opcionesFecha);
     fechaDefecto = fechaDefecto.charAt(0).toUpperCase() + fechaDefecto.slice(1);
     fechaDefecto = fechaDefecto.replace(" de ", " ");
 
