@@ -50,7 +50,7 @@ function cargarImagenBase64(url) {
 }
 
 // 2. GENERACIÓN DEL INFORME
-async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
+async function generarHTML(desviaciones, seccionId, fechaManual, notaManual, opciones = {}) {
     const fecha = new Date();
     const codigoFecha = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
     const totalGlobal = desviaciones.length;
@@ -460,9 +460,13 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual) {
         </script>
     </body></html>`;
 
+    const filename = `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.html`;
     const blob = new Blob([html], { type: "text/html" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.html`;
-    a.click();
+    if (!opciones.soloBlob) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+    }
+    return { blob, filename };
 }

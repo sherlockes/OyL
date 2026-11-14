@@ -7,6 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧹</text></svg>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
 </head>
@@ -84,11 +85,12 @@
 <!-- Exportación -->
 <div class="card">
     <h2><span>🚀</span> Exportar Informe</h2>
-    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
-        <button class="btn-primary" id="btnDescargarHTML"" style="flex:1;">🌐 HTML</button>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 0.75rem;">
+        <button class="btn-primary" id="btnDescargarHTML" style="flex:1;">🌐 HTML</button>
         <button class="btn-primary" id="btnDescargarPDF" style="flex:1;">📕 PDF</button>
-	<button class="btn-primary" id="btnDescargarDOCX" style="flex:1;">📝 DOCX</button>
+        <button class="btn-primary" id="btnDescargarDOCX" style="flex:1;">📝 DOCX</button>
     </div>
+    <button class="btn-primary" id="btnExportarTodos" style="width: 100%; background: #007934; font-weight: bold; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;">📦 Exportar todos (.zip)</button>
 </div>
 
 <!-- Zona avanzada -->
@@ -731,6 +733,72 @@ $("btnDescargarDOCX").onclick = async () => {
 
     // Llamada con las 6 variables
     exportarAWord(nombreSeccion, datos, resumen, fechaManual, notaManual, codigoFecha);
+ };
+
+ // Exportar los 3 tipos de informe en un archivo ZIP
+ $("btnExportarTodos").onclick = async () => {
+     const actual = await getSeccionActualId();
+     if (!actual) return alert("No hay sección seleccionada");
+
+     const datos = await localforage.getItem(DATA_PREFIX + actual) || [];
+     if (datos.length === 0) {
+         alert("No hay datos en esta sección para exportar.");
+         return;
+     }
+
+     const combo = document.getElementById("seccionSelect");
+     const nombreSeccion = combo.options[combo.selectedIndex] ? combo.options[combo.selectedIndex].text : actual.replace(/_/g, " ");
+
+     const ahora = new Date();
+     const opciones = { month: 'long', year: 'numeric' };
+     let fechaPorDefecto = ahora.toLocaleDateString('es-ES', opciones);
+     fechaPorDefecto = fechaPorDefecto.charAt(0).toUpperCase() + fechaPorDefecto.slice(1);
+     fechaPorDefecto = fechaPorDefecto.replace(" de ", " ");
+
+     const fechaManual = prompt("Introduce la fecha para los informes (ej: Abril 2026):", fechaPorDefecto);
+     if (fechaManual === null) return; // Cancelado
+
+     const notaManual = prompt("Introduce el resultado de la auditoría (ej: 85) o una nota general:", "");
+     if (notaManual === null) return; // Cancelado
+
+     const codigoFecha = `${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+     const resumen = {};
+     datos.forEach(d => { resumen[d.tipo] = (resumen[d.tipo] || 0) + 1; });
+
+     const btn = $("btnExportarTodos");
+     const textoOriginal = btn.innerHTML;
+     btn.disabled = true;
+
+     try {
+         if (typeof JSZip === "undefined") {
+             throw new Error("La librería JSZip no se ha cargado correctamente.");
+         }
+
+         btn.innerHTML = "⏳ Generando PDF (1/3)...";
+         const resPDF = await generarPDF(datos, nombreSeccion, fechaManual, notaManual, { soloBlob: true });
+
+         btn.innerHTML = "⏳ Generando DOCX (2/3)...";
+         const resDOCX = await exportarAWord(nombreSeccion, datos, resumen, fechaManual, notaManual, codigoFecha, { soloBlob: true });
+
+         btn.innerHTML = "⏳ Generando HTML (3/3)...";
+         const resHTML = await generarHTML(datos, nombreSeccion, fechaManual, notaManual, { soloBlob: true });
+
+         btn.innerHTML = "⏳ Creando archivo ZIP...";
+         const zip = new JSZip();
+         zip.file(resPDF.filename, resPDF.blob);
+         zip.file(resDOCX.filename, resDOCX.blob);
+         zip.file(resHTML.filename, resHTML.blob);
+
+         const zipBlob = await zip.generateAsync({ type: "blob" });
+         const nombreZip = `${codigoFecha}_Informes_OL_${nombreSeccion.replace(/\s+/g, '_')}.zip`;
+         saveAs(zipBlob, nombreZip);
+     } catch (error) {
+         console.error("Error al exportar todos los informes en ZIP:", error);
+         alert("Error al generar el archivo ZIP de informes. Revisa la consola.");
+     } finally {
+         btn.disabled = false;
+         btn.innerHTML = textoOriginal;
+     }
  };
 
 

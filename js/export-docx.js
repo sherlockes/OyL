@@ -1,6 +1,6 @@
 // js/export-docx.js
 
-async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, notaManual, codigoFecha) {
+async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, notaManual, codigoFecha, opciones = {}) {
     const { 
         Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
         WidthType, ImageRun, ExternalHyperlink, AlignmentType, ShadingType, 
@@ -349,9 +349,12 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
         }]
     });
 
-    Packer.toBlob(doc).then(blob => {
-        saveAs(blob, `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.docx`);
-    });
+    const filename = `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.docx`;
+    const blob = await Packer.toBlob(doc);
+    if (!opciones.soloBlob) {
+        saveAs(blob, filename);
+    }
+    return { blob, filename };
 }
 
 // Función auxiliar para cargar imagen local como buffer

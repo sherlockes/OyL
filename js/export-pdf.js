@@ -33,7 +33,7 @@ function achicarParaPDF(base64) {
     });
 }
 
-async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
+async function generarPDF(desviaciones, seccionId, fechaManual, notaManual, opciones = {}) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ compress: true, unit: 'mm', format: 'a4' });
     
@@ -373,7 +373,11 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual) {
 
     // --- FINALIZACIÓN ---
     const nombreArchivo = `${codigoFecha}_Informe_OL_${nombreSeccion.replace(/\s+/g, '_')}.pdf`;
-    doc.save(nombreArchivo);
+    const blob = doc.output('blob');
+    if (!opciones.soloBlob) {
+        doc.save(nombreArchivo);
+    }
+    return { blob, filename: nombreArchivo };
 }
 
 // Función auxiliar para cargar imágenes locales como Base64 (necesaria para jsPDF)
