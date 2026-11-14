@@ -70,6 +70,13 @@
 
 <label>Foto</label>
 <input type="file" id="foto" accept="image/*" capture="environment">
+<div id="fotoPreviewContainer" style="display:none; align-items:center; gap:10px; margin: 8px 0 12px 0; padding: 8px; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 6px;">
+  <img id="fotoPreviewImg" src="" style="width: 54px; height: 54px; object-fit: cover; border-radius: 4px; cursor: zoom-in; flex-shrink: 0;" title="Toca para ampliar">
+  <div style="flex: 1; font-size: 13px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+    <span id="fotoPreviewText">📷 Foto seleccionada</span>
+  </div>
+  <button type="button" id="btnQuitarFoto" class="btn-danger btn-small" style="padding: 4px 8px; font-size: 12px; margin: 0; width: auto; white-space: nowrap;">🗑️ Quitar</button>
+</div>
 
 <button type="submit" class="btn-primary" id="btnGuardar">Añadir desviación</button>
 <button type="button" class="btn-secondary" id="btnCancelarEdicion" style="display:none;">Cancelar edición</button>
@@ -175,6 +182,7 @@
  let editIndex = null;
  let latitudActual = null;
  let longitudActual = null;
+ let fotoActualBase64 = null;
 
  // Gestión de secciones
  const SECCIONES_KEY = "desviaciones_v1_9_secciones";
@@ -360,6 +368,29 @@
      });
  }
 
+ // Previsualización de foto en el formulario
+ function mostrarPreviewFoto(base64, texto = "📷 Foto seleccionada") {
+     fotoActualBase64 = base64;
+     const img = $("fotoPreviewImg");
+     const txt = $("fotoPreviewText");
+     const cont = $("fotoPreviewContainer");
+     if (img) img.src = base64;
+     if (txt) txt.textContent = texto;
+     if (cont) cont.style.display = "flex";
+ }
+
+ function limpiarPreviewFoto() {
+     fotoActualBase64 = null;
+     const img = $("fotoPreviewImg");
+     const txt = $("fotoPreviewText");
+     const cont = $("fotoPreviewContainer");
+     const input = $("foto");
+     if (img) img.src = "";
+     if (txt) txt.textContent = "";
+     if (cont) cont.style.display = "none";
+     if (input) input.value = "";
+ }
+
  // Render lista
  function render(){
      $("formTitulo").textContent = editIndex === null ? `➕ Nueva desviación (${desviaciones.length})` : "✏️ Editar desviación";
@@ -418,10 +449,12 @@
      
      let desc = $("descripcion").value.trim();
      let ub = $("ubicacion").value.trim();
-     let file = $("foto").files[0];
-     let foto = null;
+     
+     let foto = fotoActualBase64;
+     if (!foto && $("foto").files && $("foto").files[0]) {
+         foto = await reducir($("foto").files[0]);
+     }
 
-     if (file) foto = await reducir(file);
      let obj = { 
 	 tipo, 
 	 descripcion: desc, 
@@ -434,7 +467,6 @@
      if (editIndex === null) {
          desviaciones.push(obj);
      } else {
-         if (!foto) obj.foto = desviaciones[editIndex].foto;
          desviaciones[editIndex] = obj;
          editIndex = null;
          $("btnGuardar").textContent = "Añadir desviación";
@@ -444,28 +476,45 @@
      // Limpiar campos
      $("descripcion").value = ""; 
      $("ubicacion").value = ""; 
-     $("foto").value = ""; 
      $("tipo").value = "";
+     limpiarPreviewFoto();
 
      await guardarDatosSeccion(await getSeccionActualId());
      render();
-     console.log("✅ Guardado automático");
+     console.log("✅ Desviación guardada");
  }
 
- // Evento del formulario original (clic en botón)
+ // Evento del formulario original (clic en botón o Enter)
  $("formDesv").addEventListener("submit", async e => {
      e.preventDefault();
      await procesarGuardado();
  });
 
- // NUEVO: Evento automático al terminar de hacer la foto
+ // Evento al seleccionar o capturar foto: previsualizar sin guardar automáticamente
  $("foto").onchange = async () => {
      if ($("foto").files && $("foto").files.length > 0) {
-         // Un pequeño retraso visual para que el usuario vea que algo pasa
-         $("btnGuardar").textContent = "Procesando...";
-         await procesarGuardado();
-         $("btnGuardar").textContent = "Añadir desviación";
+         try {
+             const prevTxt = $("btnGuardar").textContent;
+             $("btnGuardar").disabled = true;
+             $("btnGuardar").textContent = "Procesando foto...";
+             const base64 = await reducir($("foto").files[0]);
+             mostrarPreviewFoto(base64, "📷 Foto seleccionada");
+             $("btnGuardar").textContent = prevTxt;
+         } catch (e) {
+             console.error("Error al procesar foto:", e);
+             alert("Error al procesar la foto seleccionada.");
+         } finally {
+             $("btnGuardar").disabled = false;
+         }
      }
+ };
+
+ $("btnQuitarFoto").onclick = () => {
+     limpiarPreviewFoto();
+ };
+
+ $("fotoPreviewImg").onclick = () => {
+     if (fotoActualBase64) ampliarImagen(fotoActualBase64);
  };
 
  function editar(i) {
@@ -477,6 +526,12 @@
      $("descripcion").value = d.descripcion; 
      $("ubicacion").value = d.ubicacion;
      
+     if (d.foto) {
+         mostrarPreviewFoto(d.foto, "📷 Foto actual");
+     } else {
+         limpiarPreviewFoto();
+     }
+
      // Cambiamos textos de la interfaz
      $("btnGuardar").textContent = "Guardar cambios"; 
      $("btnCancelarEdicion").style.display = "inline-block";
@@ -489,19 +544,29 @@
      $("formDesv").scrollIntoView({ behavior: 'smooth', block: 'start' });
  }
 
-  async function borrar(i){
-      if(!confirm("¿Seguro que quieres borrar esta desviación?"))return;
-      desviaciones.splice(i,1);
-      await guardarDatosSeccion(await getSeccionActualId());
-      render();
-  }
+ async function borrar(i){
+     if(!confirm("¿Seguro que quieres borrar esta desviación?"))return;
+     if (editIndex === i) {
+         editIndex = null;
+         $("btnGuardar").textContent = "Añadir desviación";
+         $("btnCancelarEdicion").style.display = "none";
+         $("descripcion").value = "";
+         $("ubicacion").value = "";
+         $("tipo").value = "";
+         limpiarPreviewFoto();
+     }
+     desviaciones.splice(i,1);
+     await guardarDatosSeccion(await getSeccionActualId());
+     render();
+ }
 
  $("btnCancelarEdicion").onclick=()=>{
      editIndex=null;
      $("btnGuardar").textContent="Añadir desviación";
      $("btnCancelarEdicion").style.display="none";
+     $("descripcion").value="";$("ubicacion").value="";$("tipo").value="";
+     limpiarPreviewFoto();
      render();
-     $("descripcion").value="";$("ubicacion").value="";$("foto").value="";$("tipo").value="";
  };
 
  // Nueva sección
@@ -688,6 +753,7 @@ $("btnCancelarRenombrar").onclick = () => {
      fechaPorDefecto = fechaPorDefecto.replace(" de ", " ");
 
      const fechaManual = prompt("Introduce la fecha para el informe (ej: Abril 2026):", fechaPorDefecto);
+     if (fechaManual === null) return; // Cancelado
 
      const notaManual = prompt("Introduce el resultado de la auditoría (ej: 85):");
      if (notaManual === null) return; // Cancelado
@@ -728,9 +794,8 @@ $("btnDescargarDOCX").onclick = async () => {
     const resumen = {};
     datos.forEach(d => { resumen[d.tipo] = (resumen[d.tipo] || 0) + 1; });
 
-    // Código de fecha seguro para el nombre del archivo (YYYYMMDD)
-    const isoDate = ahora.toISOString();
-    const codigoFecha = isoDate ? isoDate.slice(0, 10).replace(/-/g, '') : "20260101";
+    // Código de fecha estándar (YYYYMM) homogeneizado con PDF, HTML y ZIP
+    const codigoFecha = `${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}`;
 
     // Llamada con las 6 variables
     exportarAWord(nombreSeccion, datos, resumen, fechaManual, notaManual, codigoFecha);
@@ -1250,27 +1315,34 @@ $("btnDescargarDOCX").onclick = async () => {
      }
  };
 
- // --- LÓGICA DE AMPLIACIÓN DE IMÁGENES ---
- let timerCierreModal; // Variable para el temporizador
-
+ // --- LÓGICA DE AMPLIACIÓN DE IMÁGENES (LIGHTBOX) ---
  function ampliarImagen(src) {
-     clearTimeout(timerCierreModal); // Cancela cualquier temporizador previo
      const modal = $("modalImagen");
      const img = $("imgModal");
+     if (!modal || !img) return;
      
-     img.src = src; // Carga la imagen pulsada
-     modal.style.display = "block"; // Muestra el modal
-
-     // Temporizador: cerrar automáticamente tras 5 segundos
-     timerCierreModal = setTimeout(() => {
-         cerrarImagen(modal);
-     }, 5000); // 5000ms = 5 segundos
+     img.src = src;
+     modal.style.display = "flex";
+     document.body.style.overflow = "hidden";
  }
 
- function cerrarImagen(modal) {
-     clearTimeout(timerCierreModal); // Cancela el temporizador si cierran manualmente
-     modal.style.display = "none"; // Oculta el modal
+ function cerrarImagen() {
+     const modal = $("modalImagen");
+     if (!modal) return;
+     modal.style.display = "none";
+     document.body.style.overflow = "";
  }
+
+ // Cerrar modales con tecla Escape
+ document.addEventListener("keydown", (e) => {
+     if (e.key === "Escape") {
+         cerrarImagen();
+         const modalTags = $("modalTags");
+         if (modalTags && modalTags.style.display !== "none") {
+             modalTags.style.display = "none";
+         }
+     }
+ });
 
 //////// Nube de tags
 // --- Lógica de Nube de Tags Simplificada ---
@@ -1336,9 +1408,11 @@ $("modalTags").onclick = (e) => {
  })();
 </script>
 
-<div id="modalImagen" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); cursor: pointer;" onclick="cerrarImagen(this)">
-    <img id="imgModal" style="margin: auto; display: block; max-width: 90%; max-height: 90%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-    <span style="position: absolute; top: 15px; right: 25px; color: white; font-size: 35px; font-weight: bold;">&times;</span>
+<div id="modalImagen" style="display: none; position: fixed; z-index: 2000; inset: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; cursor: zoom-out;" onclick="cerrarImagen()">
+    <div style="position: relative; max-width: 95vw; max-height: 90vh; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation()">
+        <img id="imgModal" style="max-width: 95vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); object-fit: contain; cursor: default;">
+        <button type="button" onclick="cerrarImagen()" style="position: absolute; top: -14px; right: -14px; width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #1e293b; border: 2px solid #cbd5e1; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); line-height: 1;" title="Cerrar (Esc)">&times;</button>
+    </div>
 </div>
 
 </body>
