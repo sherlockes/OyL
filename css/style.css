@@ -134,16 +134,9 @@ button:active { opacity: 0.7; }
 /* Contenedor principal de gestión */
 .gestion-datos-container {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Dos columnas en escritorio/tablet */
+    grid-template-columns: 1fr;
     gap: 12px;
     margin-bottom: 1.5rem;
-}
-
-/* Ajuste para móviles: una sola columna */
-@media (max-width: 480px) {
-    .gestion-datos-container {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Tarjeta específica de gestión */
@@ -165,8 +158,8 @@ button:active { opacity: 0.7; }
 
 .card-body-gestion {
     padding: 12px;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 8px;
 }
 

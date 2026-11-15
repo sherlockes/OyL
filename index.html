@@ -131,17 +131,6 @@
         </div>
     </div>
 
-    <div class="card card-gestion">
-        <div class="card-header-mini">
-            <span>📦 APP COMPLETA</span>
-        </div>
-        <div class="card-body-gestion">
-            <button id="btnExportarJSON" class="btn-primary btn-full">📤 Exportar</button>
-            <button id="btnImportarJSON" class="btn-outline btn-full">📥 Restaurar</button>
-            <input type="file" id="inputImportar" style="display:none" accept=".json,.txt,application/json,text/plain">
-        </div>
-    </div>
-
 </div>
 
   <p style="margin-top:0; font-size:0.9rem; color:#555;">Borrar datos:</p>
@@ -929,30 +918,7 @@ $("btnDescargarDOCX").onclick = async () => {
       }
   }
 
- // EXPORTAR (BACKUP)
-  $("btnExportarJSON").onclick = async () => {
-      const backup = {
-          app: "Informe O&L v1.9 (LocalForage)",
-          fecha: new Date().toISOString(),
-          secciones: await localforage.getItem(SECCIONES_KEY) || [],
-          datos: {}
-      };
-
-      await localforage.iterate((value, key) => {
-          if (key.startsWith(DATA_PREFIX) && key !== SECCIONES_KEY && key !== SECCION_ACTUAL_KEY) {
-              backup.datos[key] = value;
-          }
-      });
-
-      const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `BACKUP_OL_${new Date().toISOString().slice(0,10)}.json`;
-      a.click();
-  };
-
- // Exportar solo la sección actual en formato JSON
+  // Exportar solo la sección actual en formato JSON
   $("btnExportarSeccion").onclick = async () => {
       const seccionId = await getSeccionActualId(); 
       
@@ -1064,32 +1030,6 @@ $("btnDescargarDOCX").onclick = async () => {
           console.error("Error al preparar compartir:", err);
           alert("Error al compartir: " + err.message);
       }
-  };
-
- // IMPORTAR (RESTAURAR)
-  $("btnImportarJSON").onclick = () => $("inputImportar").click();
-
-  $("inputImportar").onchange = (e) => {
-      const archivo = e.target.files[0];
-      if (!archivo) return;
-      const lector = new FileReader();
-      lector.onload = async (event) => {
-          try {
-              const backup = JSON.parse(event.target.result);
-              if (!backup.secciones || !backup.datos) throw new Error("Archivo no válido");
-              
-              if (confirm("Se borrarán los datos actuales para cargar el backup. ¿Continuar?")) {
-                  await localforage.clear();
-                  await localforage.setItem(SECCIONES_KEY, backup.secciones);
-                  for (const clave in backup.datos) {
-                      await localforage.setItem(clave, backup.datos[clave]);
-                  }
-                  alert("✅ Importación completada.");
-                  location.reload();
-              }
-          } catch (err) { alert("Error: " + err.message); }
-      };
-      lector.readAsText(archivo);
   };
 
  // 1. Al hacer clic en el botón, disparamos el selector de archivos oculto
