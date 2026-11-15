@@ -114,11 +114,35 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual, opci
     let nombreSeccion = (seccionId && !seccionId.toLowerCase().includes("informe")) ? seccionId : "GENERAL";
 
     // --- GRUPOS Y RESUMEN ---
-    const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
-    const grupos = {};
-    desviaciones.forEach(d => { if (!grupos[d.tipo]) grupos[d.tipo] = []; grupos[d.tipo].push(d); });
+    const ORDEN_TIPOS = [
+        "Almacenamiento",
+        "Productos químicos",
+        "Mangueras",
+        "Herramientas",
+        "Equipos e instalaciones",
+        "Elementos de seguridad y EPI's",
+        "Zonas de paso y comunes",
+        "Señalización y comunicación",
+        "Residuos"
+    ];
 
-    const tiposConDatos = ORDEN_TIPOS.filter(t => grupos[t] && grupos[t].length > 0);
+    const normalizarTipo = (t) => {
+        if (!t) return "Otros";
+        const limpio = String(t).trim();
+        const match = ORDEN_TIPOS.find(ot => ot.toLowerCase() === limpio.toLowerCase());
+        return match || limpio;
+    };
+
+    const grupos = {};
+    desviaciones.forEach(d => {
+        const t = normalizarTipo(d.tipo);
+        if (!grupos[t]) grupos[t] = [];
+        grupos[t].push(d);
+    });
+
+    const tiposConDatos = ORDEN_TIPOS
+        .concat(Object.keys(grupos).filter(t => !ORDEN_TIPOS.includes(t)))
+        .filter(t => grupos[t] && grupos[t].length > 0);
     const alturaCuadroResumen = (Math.ceil(tiposConDatos.length / 2) * 6) + 8; 
 
     doc.setFillColor(...PDF_CONFIG.COLOR_RESUMEN);
@@ -222,7 +246,7 @@ async function generarPDF(desviaciones, seccionId, fechaManual, notaManual, opci
     }
 
     // --- BUCLE DE CONTENIDO ---
-    for (const t of ORDEN_TIPOS) {
+    for (const t of tiposConDatos) {
         if (!grupos[t] || grupos[t].length === 0) continue;
 
         // Comprobamos si en la página actual caben tanto el encabezado como la primera desviación del apartado

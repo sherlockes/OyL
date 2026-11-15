@@ -67,12 +67,38 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual, opc
     const imgPortadaBase64 = await cargarImagenBase64('images/portada.jpg');
     const imgLogoBase64 = await cargarImagenBase64('images/logo.jpg');
 
-    const ORDEN_TIPOS = ["Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", "Equipos e instalaciones", "Elementos de seguridad y EPI's", "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"];
+    const ORDEN_TIPOS = [
+        "Almacenamiento",
+        "Productos químicos",
+        "Mangueras",
+        "Herramientas",
+        "Equipos e instalaciones",
+        "Elementos de seguridad y EPI's",
+        "Zonas de paso y comunes",
+        "Señalización y comunicación",
+        "Residuos"
+    ];
+
+    const normalizarTipo = (t) => {
+        if (!t) return "Otros";
+        const limpio = String(t).trim();
+        const match = ORDEN_TIPOS.find(ot => ot.toLowerCase() === limpio.toLowerCase());
+        return match || limpio;
+    };
+
     const grupos = {};
-    desviaciones.forEach(d => { if (!grupos[d.tipo]) grupos[d.tipo] = []; grupos[d.tipo].push(d); });
+    desviaciones.forEach(d => {
+        const t = normalizarTipo(d.tipo);
+        if (!grupos[t]) grupos[t] = [];
+        grupos[t].push(d);
+    });
+
+    const tiposOrdenados = ORDEN_TIPOS
+        .concat(Object.keys(grupos).filter(t => !ORDEN_TIPOS.includes(t)))
+        .filter(t => grupos[t] && grupos[t].length > 0);
     
     let resumenHTML = "";
-    ORDEN_TIPOS.filter(t => grupos[t] && grupos[t].length > 0).forEach(t => {
+    tiposOrdenados.forEach(t => {
         const idLimpio = t.replace(/\s+/g, '_');
         resumenHTML += `<li data-tipo="${t}"><strong>${t}:</strong> ${grupos[t].length} <span class="cont-corr" id="corr_${idLimpio}">(0 corregidas)</span></li>`;
     });
@@ -187,7 +213,7 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual, opc
 
         <div id="contenido-informe">`;
 
-    for (const t of ORDEN_TIPOS) {
+    for (const t of tiposOrdenados) {
         if (!grupos[t] || grupos[t].length === 0) continue;
         html += `<div class="categoria-header" data-tipo="${t}">${t.toUpperCase()} (${grupos[t].length})</div>`;
         for (const d of grupos[t]) {

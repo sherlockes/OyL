@@ -168,17 +168,34 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
 
     // --- 2. GRUPOS Y RESUMEN (PÁGINA 2) ---
     const ORDEN_TIPOS = [
-        "Almacenamiento", "Productos químicos", "Mangueras", "Herramientas", 
-        "Equipos e instalaciones", "Elementos de seguridad y EPI's", 
-        "Zonas de paso y comunes", "Señalización y comunicación", "Residuos"
+        "Almacenamiento",
+        "Productos químicos",
+        "Mangueras",
+        "Herramientas",
+        "Equipos e instalaciones",
+        "Elementos de seguridad y EPI's",
+        "Zonas de paso y comunes",
+        "Señalización y comunicación",
+        "Residuos"
     ];
+
+    const normalizarTipo = (t) => {
+        if (!t) return "Otros";
+        const limpio = String(t).trim();
+        const match = ORDEN_TIPOS.find(ot => ot.toLowerCase() === limpio.toLowerCase());
+        return match || limpio;
+    };
+
     const grupos = {};
     desviaciones.forEach(d => {
-        if (!grupos[d.tipo]) grupos[d.tipo] = [];
-        grupos[d.tipo].push(d);
+        const t = normalizarTipo(d.tipo);
+        if (!grupos[t]) grupos[t] = [];
+        grupos[t].push(d);
     });
 
-    const tiposConDatos = ORDEN_TIPOS.filter(t => grupos[t] && grupos[t].length > 0);
+    const tiposConDatos = ORDEN_TIPOS
+        .concat(Object.keys(grupos).filter(t => !ORDEN_TIPOS.includes(t)))
+        .filter(t => grupos[t] && grupos[t].length > 0);
 
     if (tiposConDatos.length > 0) {
         const col1Paragraphs = [];
@@ -258,7 +275,7 @@ async function exportarAWord(nombreSeccion, desviaciones, resumen, fechaManual, 
     }
 
     // --- 3. BUCLE DE CONTENIDO POR CATEGORÍAS ---
-    for (const t of ORDEN_TIPOS) {
+    for (const t of tiposConDatos) {
         if (!grupos[t] || grupos[t].length === 0) continue;
 
         // Encabezado del tipo: fondo verde corporativo y keepWithNext para evitar que quede huérfano
