@@ -108,7 +108,7 @@
   <div style="margin-bottom: 1.5rem;">
     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px;">
       <span id="espacioTexto">Espacio ocupado: 0%</span>
-      <span id="espacioMB">0 / 5 MB</span>
+      <span id="espacioMB">0 / 50 MB</span>
     </div>
     <div style="background: #e0e0e0; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; border: 1px solid #ccc;">
       <div id="barraProgreso" style="background: #1976d2; width: 0%; height: 100%; transition: width 0.3s;"></div>
@@ -662,24 +662,40 @@ $("btnCancelarRenombrar").onclick = () => {
       await setSeccionActualId(nuevas[0]);
       await actualizarSelectorSecciones();
       await cargarDatosSeccion(await getSeccionActualId());
+      await actualizarIndicadorEspacio();
   };
 
  // Borrar todas las secciones
   $("btnBorrarTodas").onclick=async ()=>{
       if(!confirm("¿Borrar TODAS las secciones y todas las desviaciones?")) return;
-      const secciones = await cargarSecciones();
-      for (const id of secciones) {
-          await localforage.removeItem(DATA_PREFIX + id);
-      }
-      await localforage.removeItem(SECCIONES_KEY);
-      await localforage.removeItem(SECCION_ACTUAL_KEY);
+      
+      // Limpiar completamente la base de datos de LocalForage
+      await localforage.clear();
+
+      // Limpiar también posibles claves residuales en localStorage de versiones anteriores
+      try {
+          const clavesALimpiar = [];
+          for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith(DATA_PREFIX) || k === SECCIONES_KEY || k === SECCION_ACTUAL_KEY)) {
+                  clavesALimpiar.push(k);
+              }
+          }
+          clavesALimpiar.forEach(k => localStorage.removeItem(k));
+      } catch (e) {}
+
+      // Recrear la sección base limpia
       const lista = ["seccion_1"];
       await guardarSecciones(lista);
       await setSeccionActualId("seccion_1");
+      await localforage.setItem(DATA_PREFIX + "seccion_1", []);
+      await localforage.setItem("migracion_completada", true);
+
       desviaciones = [];
       editIndex = null;
       await actualizarSelectorSecciones();
       await cargarDatosSeccion("seccion_1");
+      await actualizarIndicadorEspacio();
   };
 
  // Resumen
@@ -901,12 +917,33 @@ $("btnDescargarDOCX").onclick = async () => {
  // --- FUNCIONES DE MEMORIA Y BACKUP PARA V1.9 ---
 
   async function actualizarIndicadorEspacio() {
+      const secciones = await cargarSecciones();
+      const clavesValidas = new Set([
+          SECCIONES_KEY,
+          SECCION_ACTUAL_KEY,
+          "migracion_completada",
+          ...secciones.map(s => DATA_PREFIX + s)
+      ]);
+
       let totalBytes = 0;
+      const clavesHuerfanas = [];
+
       await localforage.iterate((value, key) => {
-          totalBytes += (JSON.stringify(value).length + key.length);
+          if (clavesValidas.has(key)) {
+              totalBytes += (JSON.stringify(value).length + key.length);
+          } else {
+              // Si no pertenece a ninguna sección activa ni al sistema, es huérfana
+              clavesHuerfanas.push(key);
+          }
       });
-      
-      const limite = 50 * 1024 * 1024; // Aumentamos el límite visual a 50MB
+
+      // Limpiar automáticamente claves huérfanas residuales para recuperar el espacio
+      for (const k of clavesHuerfanas) {
+          await localforage.removeItem(k);
+          console.log("🧹 Clave huérfana eliminada de LocalForage:", k);
+      }
+
+      const limite = 50 * 1024 * 1024; // Límite de 50MB
       const porcentaje = Math.min((totalBytes / limite) * 100, 100).toFixed(1);
       const mbOcupados = (totalBytes / (1024 * 1024)).toFixed(2);
 

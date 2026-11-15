@@ -86,6 +86,9 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual, opc
         <style>
             body { font-family: Segoe UI, Arial, sans-serif; margin: 40px; color: #333; padding-bottom: 100px; }
 
+            /* --- CONTENEDOR PRINCIPAL DEL INFORME --- */
+            .report-wrapper { max-width: 900px; margin: 0 auto; }
+
             /* --- ESTILOS DE LA PORTADA --- */
             .portada-container { max-width: 900px; margin: 0 auto 50px auto; padding-bottom: 30px; border-bottom: 2px dashed #ddd; }
             .portada-titulo { font-size: 28px; font-weight: bold; color: #007934; margin: 0 0 25px 0; }
@@ -143,11 +146,13 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual, opc
             @media print {
                 .no-print, .controls-container, .btn-edit, .btn-add, .overlay-msg, .modal-foto-overlay, input { display: none !important; }
                 body { margin: 15mm; }
+                .report-wrapper { max-width: 100%; margin: 0; }
                 .portada-container { border-bottom: none; margin-bottom: 0; padding-bottom: 0; page-break-after: always; break-after: page; }
             }
         </style>
     </head>
     <body>
+        <div class="report-wrapper">
         <!-- PORTADA -->
         <div class="portada-container">
             <h1 class="portada-titulo">AUDITORIA DE ORDEN Y LIMPIEZA</h1>
@@ -211,6 +216,7 @@ async function generarHTML(desviaciones, seccionId, fechaManual, notaManual, opc
     }
 
     html += `
+        </div>
         </div>
 
         <!-- Controles para selección de foto en subsanaciones -->
