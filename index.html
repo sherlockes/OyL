@@ -5,6 +5,7 @@
 <title>Informe de O&L v2.0</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧹</text></svg>">
+<link rel="stylesheet" href="css/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
 <script src="js/jszip.min.js"></script>
@@ -17,7 +18,10 @@
 
 <div class="app">
 
-<h1>Informe de O&L <span style="font-size:14px; color:#555;">v2.0</span></h1>
+<header class="app-header">
+  <h1>Informe de O&L</h1>
+  <button id="btnAyuda" class="btn-ayuda" type="button" title="Guía de usuario y manual (README)" aria-label="Abrir guía de usuario">?</button>
+</header>
 
 <!-- Selector de sección -->
 <div class="card">
@@ -162,6 +166,190 @@
         <div style="display:flex; gap:10px; justify-content:flex-end;">
             <button type="button" class="btn-secondary" id="btnCancelarAnadirModal" style="width:auto; padding:8px 16px;">Cancelar</button>
             <button type="button" class="btn-primary" id="btnConfirmarAnadirModal" style="width:auto; padding:8px 16px;">Añadir datos</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Guía de Usuario (Readme / Manual interactivo) -->
+<div id="modalGuia" class="modal-overlay" style="display:none;">
+    <div class="modal-content modal-guia-content">
+        <div class="guia-header">
+            <div class="guia-header-titulos">
+                <span class="guia-badge">Manual de Usuario</span>
+                <h2>📖 Guía de Auditorías O&L <span style="font-size:13px; font-weight:normal; opacity:0.85;">v2.0</span></h2>
+            </div>
+            <button type="button" id="btnCerrarGuia" class="btn-cerrar-modal" title="Cerrar guía (Esc)">&times;</button>
+        </div>
+
+        <nav class="guia-nav">
+            <a href="#guia-objetivo" class="guia-nav-link">🎯 Objetivo</a>
+            <a href="#guia-flujo" class="guia-nav-link">📱 Flujo en campo</a>
+            <a href="#guia-secciones" class="guia-nav-link">🗂️ Secciones</a>
+            <a href="#guia-exportacion" class="guia-nav-link">🚀 Informes</a>
+            <a href="#guia-colaboracion" class="guia-nav-link">🤝 Colaboración</a>
+            <a href="#guia-categorias" class="guia-nav-link">🏷️ Categorías</a>
+            <a href="#guia-consejos" class="guia-nav-link">💡 Consejos</a>
+        </nav>
+
+        <div class="guia-body">
+            <!-- 1. Objetivo y Privacidad -->
+            <section id="guia-objetivo" class="guia-seccion">
+                <h3>🎯 1. ¿Qué es el Sistema de Informe de O&L?</h3>
+                <p>
+                    Esta aplicación web está diseñada para realizar <b>auditorías e inspecciones técnicas de Orden y Limpieza (5S)</b> y seguridad en plantas industriales, almacenes, talleres y oficinas. Permite registrar hallazgos en tiempo real desde el teléfono móvil o tablet y generar de inmediato informes profesionales listos para dirección o mandos de planta.
+                </p>
+                <div class="guia-alerta">
+                    <span style="font-size: 20px;">🔒</span>
+                    <div>
+                        <strong>Privacidad total y funcionamiento 100% Offline:</strong>
+                        <p style="margin: 3px 0 0 0; font-size: 12px; color: #065f46;">
+                            Todos los datos y fotografías se guardan localmente en la memoria segura del navegador (mediante <em>LocalForage / IndexedDB</em>). Nada se sube a servidores externos ni requiere conexión continuada a Internet durante la inspección.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Flujo de Trabajo en Campo -->
+            <section id="guia-flujo" class="guia-seccion">
+                <h3>📱 2. Flujo de Trabajo en Campo (Paso a Paso)</h3>
+                <p>Para completar una inspección con la máxima rapidez y rigor técnico, sigue estos pasos:</p>
+
+                <div class="guia-paso">
+                    <span class="guia-paso-num">Paso 1: Seleccionar o crear el área</span>
+                    Elige la zona a inspeccionar en el menú desplegable superior o pulsa <b>"Nueva sección"</b> (ej. <em>"Almacén Central"</em>, <em>"Taller Mecánico"</em>, <em>"Línea 1 - Envasado"</em>).
+                </div>
+
+                <div class="guia-paso">
+                    <span class="guia-paso-num">Paso 2: Registrar cada hallazgo</span>
+                    En el formulario <b>"Nueva desviación"</b>:
+                    <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 13px;">
+                        <li><b>Tipo:</b> Selecciona una de las 9 categorías o pulsa <b>"🏷️ Sugerencias"</b> para autocompletar rápidamente con anomalías comunes.</li>
+                        <li><b>Descripción:</b> Detalla el problema con claridad (ej. <em>"Fuga de aceite bajo bancada"</em>, <em>"Palet obstruyendo paso"</em>).</li>
+                        <li><b>Ubicación:</b> Especifica el punto exacto (ej. <em>"Frente a máquina CNC 3"</em>, <em>"Estantería B-04"</em>).</li>
+                        <li><b>Foto:</b> Captura la imagen con la cámara del móvil o elígela de la galería. La app la comprime y redimensiona automáticamente a 500px para que el informe no sea pesado. Puedes previsualizarla, ampliarla o quitarla antes de guardar.</li>
+                        <li><b>GPS:</b> La aplicación detecta la posición satelital de forma automática (marcada con el icono 🌎 en la lista).</li>
+                    </ul>
+                    Pulsa <b>"Añadir desviación"</b> para guardarla.
+                </div>
+
+                <div class="guia-paso">
+                    <span class="guia-paso-num">Paso 3: Revisión y corrección</span>
+                    Las desviaciones aparecen en la lista inferior en orden cronológico inverso. Toca cualquier miniatura para ampliar la foto a pantalla completa. Si necesitas corregir un dato, pulsa <b>"Editar"</b>: los campos se cargarán en el formulario y la pantalla subirá de forma suave.
+                </div>
+
+                <div class="guia-paso">
+                    <span class="guia-paso-num">Paso 4: Exportación del informe</span>
+                    Al terminar la ronda de inspección, elige el formato de informe deseado (HTML, PDF, DOCX o ZIP completo).
+                </div>
+            </section>
+
+            <!-- 3. Gestión de Secciones -->
+            <section id="guia-secciones" class="guia-seccion">
+                <h3>🗂️ 3. Gestión de Secciones</h3>
+                <p>Las secciones permiten organizar el trabajo por áreas físicas, departamentos o fechas:</p>
+                <ul style="margin: 6px 0 10px 18px; padding: 0;">
+                    <li><b>Nueva sección:</b> Permite nombres descriptivos con espacios, tildes y eñes (ej: <em>"Planta Embalaje - Zona Norte"</em>).</li>
+                    <li><b>Renombrar Sección:</b> Modifica el nombre del área activa sin perder ninguna desviación ni fotografía registrada.</li>
+                    <li><b>Cambio rápido:</b> El selector desplegable carga al instante los datos de cualquier sección almacenada.</li>
+                </ul>
+            </section>
+
+            <!-- 4. Exportación e Informes -->
+            <section id="guia-exportacion" class="guia-seccion">
+                <h3>🚀 4. Informes y Formatos de Exportación</h3>
+                <p>
+                    Al solicitar una exportación, la app te pedirá confirmar la <b>Fecha del Informe</b> (por defecto el mes y año actual) y la <b>Nota o Resultado de la Auditoría</b> (ej. <em>"85%"</em>, <em>"FAVORABLE"</em>, <em>"Pendiente de Acción"</em>).
+                </p>
+
+                <div class="guia-grid-formatos">
+                    <div class="guia-formato-card">
+                        <strong>🌐 Informe HTML (Interactivo)</strong>
+                        <p>Diseñado para que los <b>responsables de área</b> revisen los hallazgos en su navegador o móvil, amplíen las fotos y marquen las casillas de subsanación con fecha y firma.</p>
+                    </div>
+                    <div class="guia-formato-card">
+                        <strong>📕 Informe PDF (Dirección)</strong>
+                        <p>Documento cerrado y formal generado mediante <em>jsPDF</em>. Incluye portada corporativa, tabla de resumen ejecutivo por categorías y fichas técnicas a doble columna.</p>
+                    </div>
+                    <div class="guia-formato-card">
+                        <strong>📝 Informe DOCX (Word Editable)</strong>
+                        <p>Documento de Microsoft Word con portada, tablas de estadísticas y fichas técnicas idénticas al PDF, listo por si necesitas editar o añadir comentarios antes de entregar.</p>
+                    </div>
+                    <div class="guia-formato-card">
+                        <strong>📦 Exportar todos (.zip)</strong>
+                        <p>Genera en un solo clic los tres informes (PDF, Word y HTML) y los descarga agrupados en un archivo ZIP con fecha normalizada (<em>YYYYMM_Informes_OL_Seccion.zip</em>).</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. Trabajo Colaborativo y Backups -->
+            <section id="guia-colaboracion" class="guia-seccion">
+                <h3>🤝 5. Trabajo en Equipo, Copias y Memoria (Ajustes Avanzados)</h3>
+                <p>En el bloque de <b>Ajustes Avanzados</b> dispones de herramientas para colaborar entre varios inspectores y asegurar tus datos:</p>
+                
+                <div class="guia-paso">
+                    <span class="guia-paso-num">📤 Exportar sección (.json)</span>
+                    Descarga un archivo con todas las desviaciones y fotos de la sección actual. Sirve como copia de seguridad o para transferir el trabajo a otro dispositivo.
+                </div>
+
+                <div class="guia-paso">
+                    <span class="guia-paso-num">📥 Importar sección (.json)</span>
+                    Carga una sección externa en tu navegador. Si el nombre ya existe, el sistema bloqueará la importación para evitar que sobrescribas tus datos por error.
+                </div>
+
+                <div class="guia-paso">
+                    <span class="guia-paso-num">➕ Añadir a esta sección (Fusión)</span>
+                    <b>¡Ideal para inspecciones simultáneas!</b> Varios auditores pueden inspeccionar diferentes partes de una misma nave con sus teléfonos móviles. Al final, uno de ellos importa los datos de los demás y los fusiona en la misma sección o en una nueva.
+                </div>
+
+                <div class="guia-paso">
+                    <span class="guia-paso-num">📲 Compartir sección (Móviles)</span>
+                    En smartphones, este botón abre el menú nativo para enviar la sección activa por <em>WhatsApp, Telegram, Correo o Drive</em> en formato de archivo de texto compatible (<em>.txt</em>).
+                </div>
+
+                <div class="guia-alerta guia-alerta-info">
+                    <span style="font-size: 20px;">📊</span>
+                    <div>
+                        <strong>Monitor de Almacenamiento (50 MB):</strong>
+                        <p style="margin: 3px 0 0 0; font-size: 12px; color: #1e40af;">
+                            La barra inferior muestra el porcentaje de memoria ocupada en LocalForage. Si supera el 80% (indicador rojo), exporta tus secciones terminadas a tu equipo y bórralas de la app para liberar espacio.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. Categorías y Nube de Sugerencias -->
+            <section id="guia-categorias" class="guia-seccion">
+                <h3>🏷️ 6. Categorías Técnicas Normalizadas</h3>
+                <p>Las desviaciones se clasifican en 9 categorías oficiales para asegurar un análisis coherente:</p>
+
+                <div class="guia-lista-tags">
+                    <div class="guia-item-tag"><b>📦 Almacenamiento</b><span>Señalización, Cargas inestables, Estanterías dañadas</span></div>
+                    <div class="guia-item-tag"><b>🧪 Productos químicos</b><span>Fichas de seguridad, Cubetos de retención, Lavaojos</span></div>
+                    <div class="guia-item-tag"><b>🚰 Mangueras</b><span>Falta de soporte, Fugas de aire/agua, Mal estado</span></div>
+                    <div class="guia-item-tag"><b>🔧 Herramientas</b><span>Bancos de trabajo, Herramientas sin recoger</span></div>
+                    <div class="guia-item-tag"><b>⚙️ Equipos e instalaciones</b><span>Fugas de fluidos, Protecciones, Cuadros eléctricos</span></div>
+                    <div class="guia-item-tag"><b>🦺 Elementos de seguridad y EPI's</b><span>EPIs deteriorados, Uso indebido, Extintores tapados</span></div>
+                    <div class="guia-item-tag"><b>🚶 Zonas de paso y comunes</b><span>Obstáculos en pasillos, Suelo sucio, Chatarra</span></div>
+                    <div class="guia-item-tag"><b>📢 Señalización y comunicación</b><span>Cartelería dañada, Tablones 5S desactualizados</span></div>
+                    <div class="guia-item-tag"><b>🗑️ Residuos</b><span>Contenedores desbordados, Mezcla indebida, Carteles</span></div>
+                </div>
+            </section>
+
+            <!-- 7. Consejos y Buenas Prácticas -->
+            <section id="guia-consejos" class="guia-seccion">
+                <h3>💡 7. Consejos para una Auditoría Eficaz</h3>
+                <ul style="margin: 6px 0 0 18px; padding: 0;">
+                    <li><b>Enfoque de las fotos:</b> Toma la fotografía a una distancia media que permita ver tanto el detalle del fallo como el entorno de la máquina o pasillo para facilitar su localización.</li>
+                    <li><b>Permisos de ubicación:</b> Concede permiso de GPS en el navegador móvil. Si estás en sótanos o naves con techos metálicos y el GPS tarda, no te preocupes: el campo manual de ubicación se incluirá siempre en el informe.</li>
+                    <li><b>Cierre de planes de acción:</b> Envía el informe HTML a los jefes de sección para que vayan marcando las casillas verdes de subsanación a medida que resuelven los problemas.</li>
+                    <li><b>Atajos de teclado:</b> En ordenador puedes pulsar la tecla <kbd style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;">Esc</kbd> para cerrar de inmediato esta guía o cualquier ventana emergente de fotos.</li>
+                </ul>
+            </section>
+        </div>
+
+        <div class="guia-footer">
+            <span style="font-size: 12px; color: #64748b;">🔒 Sistema 100% privado y local (Offline-First) &bull; v2.0</span>
+            <button type="button" id="btnEntendidoGuia" class="btn-primary" style="margin: 0; padding: 8px 20px; font-weight: bold;">¡Entendido!</button>
         </div>
     </div>
 </div>
@@ -1305,13 +1493,61 @@ $("btnDescargarDOCX").onclick = async () => {
      document.body.style.overflow = "";
  }
 
+ // --- GESTIÓN DE MODAL GUÍA DE USUARIO (README) ---
+ function abrirGuiaUsuario() {
+     const modal = $("modalGuia");
+     if (modal) {
+         modal.style.display = "flex";
+         document.body.style.overflow = "hidden";
+     }
+ }
+
+ function cerrarGuiaUsuario() {
+     const modal = $("modalGuia");
+     if (modal) {
+         modal.style.display = "none";
+         document.body.style.overflow = "";
+     }
+ }
+
+ if ($("btnAyuda")) $("btnAyuda").onclick = abrirGuiaUsuario;
+ if ($("btnCerrarGuia")) $("btnCerrarGuia").onclick = cerrarGuiaUsuario;
+ if ($("btnEntendidoGuia")) $("btnEntendidoGuia").onclick = cerrarGuiaUsuario;
+
+ const modalGuiaEl = $("modalGuia");
+ if (modalGuiaEl) {
+     modalGuiaEl.onclick = (e) => {
+         if (e.target.id === "modalGuia") {
+             cerrarGuiaUsuario();
+         }
+     };
+ }
+
+ // Desplazamiento suave en los enlaces de navegación de la guía
+ document.querySelectorAll(".guia-nav-link").forEach(link => {
+     link.addEventListener("click", (e) => {
+         e.preventDefault();
+         const targetId = link.getAttribute("href").substring(1);
+         const targetEl = document.getElementById(targetId);
+         if (targetEl) {
+             targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+         }
+     });
+ });
+
  // Cerrar modales con tecla Escape
  document.addEventListener("keydown", (e) => {
      if (e.key === "Escape") {
          cerrarImagen();
+         cerrarGuiaUsuario();
          const modalTags = $("modalTags");
          if (modalTags && modalTags.style.display !== "none") {
              modalTags.style.display = "none";
+         }
+         const modalAnadir = $("modalSeleccionarSeccion");
+         if (modalAnadir && modalAnadir.style.display !== "none") {
+             modalAnadir.style.display = "none";
+             datosPendientesAnadir = null;
          }
      }
  });
